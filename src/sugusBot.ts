@@ -41,13 +41,29 @@ export class SugusBot {
 
   async openCandidatesPage(): Promise<void> {
     try {
+      this.log("Abriendo menu lateral de candidatos...");
       await this.openMenuIfNeeded();
+
+      this.log("Click en Candidatos.");
       await this.clickMenuItem("Candidatos");
+      this.log(`Pausa antes de Trabajar con Candidatos: ${this.msToSeconds(this.config.candidatesMenuPauseMs)}s.`);
       await sleep(this.config.candidatesMenuPauseMs);
+
+      this.log("Click en Trabajar con Candidatos.");
       await this.clickMenuItem("Trabajar con Candidatos", this.config.candidatesPageTimeoutMs);
+      this.log(
+        `Click enviado. Espero la carga de la pantalla hasta ${this.msToSeconds(
+          this.config.candidatesPageTimeoutMs
+        )}s.`
+      );
       await sleep(this.config.candidatesAfterClickPauseMs);
       await this.waitForReady(this.config.candidatesPageTimeoutMs);
-      await this.waitForDisplayed(By.id("vK2BTOOLSGENERICSEARCHFIELD"), this.config.candidatesPageTimeoutMs);
+      await this.waitForDisplayedWithProgress(
+        By.id("vK2BTOOLSGENERICSEARCHFIELD"),
+        this.config.candidatesPageTimeoutMs,
+        "Trabajar con Candidatos"
+      );
+      this.log("Pantalla Trabajar con Candidatos cargada.");
       await this.ensureAdvancedFiltersVisible();
     } catch (error) {
       const diagnostic = await this.saveDiagnostic("open-candidates-page");
@@ -156,7 +172,8 @@ export class SugusBot {
 
     if (this.config.browser === "chrome") {
       const options = new chrome.Options();
-      options.addArguments("--window-size=1440,1000");
+      options.addArguments("--window-size=1440,1000", "--log-level=3", "--disable-logging");
+      options.excludeSwitches("enable-logging");
       if (this.config.headless) {
         options.addArguments("--headless=new", "--disable-gpu");
       }
@@ -165,7 +182,8 @@ export class SugusBot {
 
     if (this.config.browser === "edge") {
       const options = new edge.Options();
-      options.addArguments("--window-size=1440,1000");
+      options.addArguments("--window-size=1440,1000", "--log-level=3", "--disable-logging");
+      options.excludeSwitches("enable-logging");
       if (this.config.headless) {
         options.addArguments("--headless=new", "--disable-gpu");
       }
@@ -399,6 +417,34 @@ export class SugusBot {
     throw new Error(`No se encontro elemento visible: ${by.toString()}`);
   }
 
+  private async waitForDisplayedWithProgress(by: By, timeoutMs: number, label: string): Promise<WebElement> {
+    const driver = this.requireDriver();
+    const startedAt = Date.now();
+    const endAt = startedAt + timeoutMs;
+    let nextProgressAt = startedAt + 10000;
+
+    while (Date.now() < endAt) {
+      const elements = await driver.findElements(by);
+      for (const element of elements) {
+        if (await this.elementIsDisplayed(element)) {
+          return element;
+        }
+      }
+
+      const now = Date.now();
+      if (now >= nextProgressAt) {
+        const elapsed = this.msToSeconds(now - startedAt);
+        const total = this.msToSeconds(timeoutMs);
+        this.log(`Sigo esperando ${label}... ${elapsed}s/${total}s`);
+        nextProgressAt = now + 10000;
+      }
+
+      await sleep(500);
+    }
+
+    throw new Error(`No se encontro elemento visible: ${by.toString()}`);
+  }
+
   private async isDisplayed(by: By): Promise<boolean> {
     const elements = await this.requireDriver().findElements(by);
     for (const element of elements) {
@@ -430,5 +476,13 @@ export class SugusBot {
       throw new Error("El driver no fue inicializado.");
     }
     return this.driver;
+  }
+
+  private log(message: string): void {
+    console.log(`[Sugus] ${message}`);
+  }
+
+  private msToSeconds(ms: number): number {
+    return Math.round(ms / 1000);
   }
 }
