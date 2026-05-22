@@ -30,9 +30,18 @@ npm run validate -- --excel "C:\ruta\ACTIVOS.xlsx" --limit 10
 npm run validate -- --excel "C:\ruta\ACTIVOS.xlsx" --browser edge
 npm run validate -- --excel "C:\ruta\ACTIVOS.xlsx" --headless=true
 npm run validate -- --excel "C:\ruta\ACTIVOS.xlsx" --match-mode primary
+npm run validate -- --excel "C:\ruta\ACTIVOS.xlsx" --candidatesPageTimeoutMs 120000
 ```
 
 `strict` valida todos los tokens de nombres y apellidos del Excel. `primary` valida solo primer nombre y primer apellido.
+
+Si la pantalla `Trabajar con Candidatos` tarda mucho, se pueden ajustar estas esperas en `.env`:
+
+```env
+SUGUS_CANDIDATES_MENU_PAUSE_MS=2000
+SUGUS_CANDIDATES_AFTER_CLICK_PAUSE_MS=5000
+SUGUS_CANDIDATES_PAGE_TIMEOUT_MS=120000
+```
 
 ## Reportes
 

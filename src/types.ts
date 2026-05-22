@@ -11,6 +11,9 @@ export interface AppConfig {
   outputDir: string;
   waitMs: number;
   timeoutMs: number;
+  candidatesMenuPauseMs: number;
+  candidatesAfterClickPauseMs: number;
+  candidatesPageTimeoutMs: number;
   limit?: number;
   startRow?: number;
   keepOpen: boolean;
@@ -57,4 +60,3 @@ export interface ValidationResult {
   found?: SugusGridRow;
   error?: string;
 }
-

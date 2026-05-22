@@ -94,10 +94,21 @@ export function loadConfig(argv = process.argv.slice(2)): AppConfig {
     outputDir: asString(args.out, process.env.OUTPUT_DIR || path.resolve(process.cwd(), "reports")),
     waitMs: asNumber(args.waitMs, asNumber(process.env.SUGUS_WAIT_MS, 900)),
     timeoutMs: asNumber(args.timeoutMs, asNumber(process.env.SUGUS_TIMEOUT_MS, 30000)),
+    candidatesMenuPauseMs: asNumber(
+      args.candidatesMenuPauseMs,
+      asNumber(process.env.SUGUS_CANDIDATES_MENU_PAUSE_MS, 2000)
+    ),
+    candidatesAfterClickPauseMs: asNumber(
+      args.candidatesAfterClickPauseMs,
+      asNumber(process.env.SUGUS_CANDIDATES_AFTER_CLICK_PAUSE_MS, 5000)
+    ),
+    candidatesPageTimeoutMs: asNumber(
+      args.candidatesPageTimeoutMs,
+      asNumber(process.env.SUGUS_CANDIDATES_PAGE_TIMEOUT_MS, 120000)
+    ),
     limit: args.limit === undefined ? undefined : asNumber(args.limit, 0),
     startRow: args.startRow === undefined ? undefined : asNumber(args.startRow, 2),
     keepOpen: asBoolean(args.keepOpen, false),
     matchMode: parseMatchMode(asString(args.matchMode, process.env.SUGUS_MATCH_MODE || "strict"))
   };
 }
-

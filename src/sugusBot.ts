@@ -43,10 +43,11 @@ export class SugusBot {
     try {
       await this.openMenuIfNeeded();
       await this.clickMenuItem("Candidatos");
-      await sleep(500);
-      await this.clickMenuItem("Trabajar con Candidatos");
-      await this.waitForReady();
-      await this.waitForDisplayed(By.id("vK2BTOOLSGENERICSEARCHFIELD"), this.config.timeoutMs);
+      await sleep(this.config.candidatesMenuPauseMs);
+      await this.clickMenuItem("Trabajar con Candidatos", this.config.candidatesPageTimeoutMs);
+      await sleep(this.config.candidatesAfterClickPauseMs);
+      await this.waitForReady(this.config.candidatesPageTimeoutMs);
+      await this.waitForDisplayed(By.id("vK2BTOOLSGENERICSEARCHFIELD"), this.config.candidatesPageTimeoutMs);
       await this.ensureAdvancedFiltersVisible();
     } catch (error) {
       const diagnostic = await this.saveDiagnostic("open-candidates-page");
@@ -192,11 +193,11 @@ export class SugusBot {
     await this.waitForDisplayed(candidatosLocator, this.config.timeoutMs);
   }
 
-  private async clickMenuItem(text: string): Promise<void> {
-    const element = await this.waitForDisplayed(this.menuTextLocator(text), this.config.timeoutMs);
+  private async clickMenuItem(text: string, timeoutMs = this.config.timeoutMs): Promise<void> {
+    const element = await this.waitForDisplayed(this.menuTextLocator(text), timeoutMs);
     const clickable = await this.closestClickable(element);
     await this.clickElement(clickable);
-    await this.waitForReady();
+    await this.waitForReady(timeoutMs);
   }
 
   private menuTextLocator(text: string): By {
@@ -416,12 +417,12 @@ export class SugusBot {
     }
   }
 
-  private async waitForReady(): Promise<void> {
+  private async waitForReady(timeoutMs = this.config.timeoutMs): Promise<void> {
     const driver = this.requireDriver();
     await driver.wait(async () => {
       const readyState = await driver.executeScript("return document.readyState");
       return readyState === "complete" || readyState === "interactive";
-    }, this.config.timeoutMs);
+    }, timeoutMs);
   }
 
   private requireDriver(): WebDriver {
