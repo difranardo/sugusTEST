@@ -45,6 +45,8 @@ SUGUS_CANDIDATES_PAGE_TIMEOUT_MS=120000
 
 Durante esa carga el script imprime progreso cada 10 segundos. Si aparece `Sigo esperando Trabajar con Candidatos...`, no cortes la terminal: todavia esta dentro del timeout configurado.
 
+En esa pantalla el panel de filtros puede quedar colapsado. El bot no necesita verlo abierto: usa los campos del DOM y dispara el boton `Buscar` igual.
+
 ## Reportes
 
 Cada corrida genera:

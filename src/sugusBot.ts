@@ -64,7 +64,7 @@ export class SugusBot {
         "Trabajar con Candidatos"
       );
       this.log("Pantalla Trabajar con Candidatos cargada.");
-      await this.ensureAdvancedFiltersVisible();
+      await this.ensureFilterFieldsReady();
     } catch (error) {
       const diagnostic = await this.saveDiagnostic("open-candidates-page");
       const currentUrl = await this.safeCurrentUrl();
@@ -243,18 +243,18 @@ export class SugusBot {
   }
 
   private async searchByDocument(document: string): Promise<SugusGridRow[]> {
-    await this.ensureAdvancedFiltersVisible();
+    await this.ensureFilterFieldsReady();
     await this.clearFilters();
-    await this.typeById("vCANDOCNRO_FILTRO", document);
+    await this.setInputById("vCANDOCNRO_FILTRO", document);
     await this.submitSearch();
     return this.readGridRows();
   }
 
   private async searchByName(candidate: Candidate): Promise<SugusGridRow[]> {
-    await this.ensureAdvancedFiltersVisible();
+    await this.ensureFilterFieldsReady();
     await this.clearFilters();
-    await this.typeById("vCANNOM_FILTRO", candidate.firstName);
-    await this.typeById("vCANAPE_FILTRO", candidate.firstSurname);
+    await this.setInputById("vCANNOM_FILTRO", candidate.firstName);
+    await this.setInputById("vCANAPE_FILTRO", candidate.firstSurname);
     await this.submitSearch();
     return this.readGridRows();
   }
@@ -268,16 +268,18 @@ export class SugusBot {
   }
 
   private async submitSearch(): Promise<void> {
-    await this.click(By.id("SEARCHBUTTON"));
+    await this.clickByIdEvenIfHidden("SEARCHBUTTON");
     await this.waitForReady();
     await sleep(this.config.waitMs);
   }
 
-  private async ensureAdvancedFiltersVisible(): Promise<void> {
-    const visible = await this.isDisplayed(By.id("vCANDOCNRO_FILTRO"));
-    if (!visible) {
-      await this.click(By.id("FILTERTOGGLE_COMBINED"));
-      await this.waitForDisplayed(By.id("vCANDOCNRO_FILTRO"), this.config.timeoutMs);
+  private async ensureFilterFieldsReady(): Promise<void> {
+    await this.waitForElementPresent(By.id("vCANDOCNRO_FILTRO"), this.config.timeoutMs);
+
+    if (!(await this.isDisplayed(By.id("vCANDOCNRO_FILTRO")))) {
+      this.log("Filtros avanzados colapsados; completo los campos ocultos por DOM.");
+      await this.optionalClick(By.id("FILTERTOGGLE_COMBINED"), 3000);
+      await sleep(500);
     }
   }
 
@@ -307,14 +309,17 @@ export class SugusBot {
     await this.setInputValue(element, value);
   }
 
+  private async setInputById(id: string, value: string): Promise<void> {
+    const element = await this.waitForElementPresent(By.id(id), this.config.timeoutMs);
+    await this.setInputValue(element, value);
+  }
+
   private async clearInputIfPresent(id: string): Promise<void> {
     const elements = await this.requireDriver().findElements(By.id(id));
     if (elements.length === 0) {
       return;
     }
-    if (!(await this.elementIsDisplayed(elements[0]))) {
-      return;
-    }
+
     await this.setInputValue(elements[0], "");
   }
 
@@ -338,6 +343,16 @@ export class SugusBot {
   private async click(by: By, timeoutMs = this.config.timeoutMs): Promise<void> {
     const element = await this.waitForDisplayed(by, timeoutMs);
     await this.clickElement(element);
+  }
+
+  private async clickByIdEvenIfHidden(id: string): Promise<void> {
+    const element = await this.waitForElementPresent(By.id(id), this.config.timeoutMs);
+    if (await this.elementIsDisplayed(element)) {
+      await this.clickElement(element);
+      return;
+    }
+
+    await this.requireDriver().executeScript("arguments[0].click();", element);
   }
 
   private async optionalClick(by: By, timeoutMs: number): Promise<boolean> {
@@ -415,6 +430,21 @@ export class SugusBot {
     }
 
     throw new Error(`No se encontro elemento visible: ${by.toString()}`);
+  }
+
+  private async waitForElementPresent(by: By, timeoutMs: number): Promise<WebElement> {
+    const driver = this.requireDriver();
+    const endAt = Date.now() + timeoutMs;
+
+    while (Date.now() < endAt) {
+      const elements = await driver.findElements(by);
+      if (elements.length > 0) {
+        return elements[0];
+      }
+      await sleep(200);
+    }
+
+    throw new Error(`No se encontro elemento en DOM: ${by.toString()}`);
   }
 
   private async waitForDisplayedWithProgress(by: By, timeoutMs: number, label: string): Promise<WebElement> {
