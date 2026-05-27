@@ -14,6 +14,8 @@ export interface AppConfig {
   candidatesMenuPauseMs: number;
   candidatesAfterClickPauseMs: number;
   candidatesPageTimeoutMs: number;
+  liquidacionesMenuPauseMs: number;
+  liquidacionesMenuTimeoutMs: number;
   liquidacionesAfterClickPauseMs: number;
   liquidacionesPageTimeoutMs: number;
   limit?: number;

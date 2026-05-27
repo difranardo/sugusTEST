@@ -106,6 +106,14 @@ export function loadConfig(argv = process.argv.slice(2)): AppConfig {
       args.candidatesPageTimeoutMs,
       asNumber(process.env.SUGUS_CANDIDATES_PAGE_TIMEOUT_MS, 120000)
     ),
+    liquidacionesMenuPauseMs: asNumber(
+      args.liquidacionesMenuPauseMs,
+      asNumber(process.env.SUGUS_LIQUIDACIONES_MENU_PAUSE_MS, 5000)
+    ),
+    liquidacionesMenuTimeoutMs: asNumber(
+      args.liquidacionesMenuTimeoutMs,
+      asNumber(process.env.SUGUS_LIQUIDACIONES_MENU_TIMEOUT_MS, 120000)
+    ),
     liquidacionesAfterClickPauseMs: asNumber(
       args.liquidacionesAfterClickPauseMs,
       asNumber(process.env.SUGUS_LIQUIDACIONES_AFTER_CLICK_PAUSE_MS, 5000)

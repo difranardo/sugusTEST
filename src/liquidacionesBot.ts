@@ -35,21 +35,27 @@ export class LiquidacionesBot {
     await this.click(By.id("LOGIN"));
 
     await this.waitForReady();
-    await this.waitForDisplayed(By.id("MENUTOGGLE_MPAGE"), this.config.timeoutMs);
+    await this.waitForDisplayedWithProgress(
+      By.id("MENUTOGGLE_MPAGE"),
+      this.config.liquidacionesMenuTimeoutMs,
+      "home despues del login"
+    );
   }
 
   async openLiquidacionesPage(): Promise<void> {
     try {
       try {
+        this.log(`Pausa inicial para que cargue el home: ${this.msToSeconds(this.config.liquidacionesMenuPauseMs)}s.`);
+        await sleep(this.config.liquidacionesMenuPauseMs);
         this.log("Abriendo menu lateral de liquidaciones...");
-        await this.openMenuIfNeeded("Liquidaciones");
+        await this.openMenuIfNeeded("Liquidaciones", this.config.liquidacionesMenuTimeoutMs);
 
         this.log("Click en Liquidaciones.");
-        await this.clickMenuItem("Liquidaciones");
+        await this.clickMenuItem("Liquidaciones", this.config.liquidacionesMenuTimeoutMs);
         await sleep(1000);
 
         this.log("Click en Consulta de Liquidaciones.");
-        await this.clickMenuItem("Consulta de Liquidaciones", this.config.liquidacionesPageTimeoutMs);
+        await this.clickMenuItem("Consulta de Liquidaciones", this.config.liquidacionesMenuTimeoutMs);
         this.log(
           `Click enviado. Espero Consulta de Liquidaciones hasta ${this.msToSeconds(
             this.config.liquidacionesPageTimeoutMs
@@ -183,19 +189,19 @@ export class LiquidacionesBot {
     await this.waitForElementPresent(By.id("GridContainerTbl"), this.config.timeoutMs);
   }
 
-  private async openMenuIfNeeded(menuText: string): Promise<void> {
+  private async openMenuIfNeeded(menuText: string, timeoutMs = this.config.timeoutMs): Promise<void> {
     const locator = this.menuTextLocator(menuText);
     if (await this.isDisplayed(locator)) {
       return;
     }
 
     await this.click(By.id("MENUTOGGLE_MPAGE"), 8000);
-    await sleep(1000);
-    await this.waitForDisplayed(locator, this.config.timeoutMs);
+    await sleep(this.config.liquidacionesMenuPauseMs);
+    await this.waitForDisplayedWithProgress(locator, timeoutMs, `menu ${menuText}`);
   }
 
   private async clickMenuItem(text: string, timeoutMs = this.config.timeoutMs): Promise<void> {
-    const element = await this.waitForDisplayed(this.menuTextLocator(text), timeoutMs);
+    const element = await this.waitForDisplayedWithProgress(this.menuTextLocator(text), timeoutMs, `opcion ${text}`);
     const clickable = await this.closestClickable(element);
     await this.clickElement(clickable);
     await this.waitForReady(timeoutMs);

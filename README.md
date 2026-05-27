@@ -63,10 +63,12 @@ Opciones utiles:
 npm run validate:liquidaciones -- --excel "C:\ruta\Consulta_histórico_para IT.xlsx" --liquidacion 64968
 npm run validate:liquidaciones -- --excel "C:\ruta\Consulta_histórico_para IT.xlsx" --limitLiquidaciones 3
 npm run validate:liquidaciones -- --excel "C:\ruta\Consulta_histórico_para IT.xlsx" --skipDetail
+npm run validate:liquidaciones -- --excel "C:\ruta\Consulta_histórico_para IT.xlsx" --liquidacionesMenuTimeoutMs 120000
+npm run validate:liquidaciones -- --excel "C:\ruta\Consulta_histórico_para IT.xlsx" --liquidacionesMenuPauseMs 5000
 npm run validate:liquidaciones -- --excel "C:\ruta\Consulta_histórico_para IT.xlsx" --liquidacionesPageTimeoutMs 120000
 ```
 
-El flujo busca por `Nro. Liquidacion gente`, valida que aparezcan los recursos del Excel y, salvo que uses `--skipDetail`, entra al detalle de cada fila para comparar conceptos e importes. Si el detalle tiene una grilla distinta a la esperada, guarda captura y HTML en `reports/diagnostics`.
+El flujo busca por `Nro. Liquidacion gente`, valida que aparezcan los recursos del Excel y, salvo que uses `--skipDetail`, entra al detalle de cada fila para comparar conceptos e importes. Si el menu o la pantalla tardan, el bot espera hasta 120 segundos por defecto y muestra progreso cada 10 segundos. Si el detalle tiene una grilla distinta a la esperada, guarda captura y HTML en `reports/diagnostics`.
 
 ## Reportes
 
