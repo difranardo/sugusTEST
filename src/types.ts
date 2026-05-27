@@ -14,6 +14,8 @@ export interface AppConfig {
   candidatesMenuPauseMs: number;
   candidatesAfterClickPauseMs: number;
   candidatesPageTimeoutMs: number;
+  liquidacionesAfterClickPauseMs: number;
+  liquidacionesPageTimeoutMs: number;
   limit?: number;
   startRow?: number;
   keepOpen: boolean;

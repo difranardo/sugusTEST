@@ -4,7 +4,7 @@ import { XMLParser } from "fast-xml-parser";
 import { Candidate } from "./types";
 import { joinParts, normalizeDocument, normalizeHeader } from "./normalize";
 
-type ExcelRow = Record<string, unknown>;
+export type ExcelRow = Record<string, unknown>;
 type XmlNode = string | number | boolean | null | undefined | Record<string, unknown> | XmlNode[];
 
 interface SheetRow {
@@ -161,7 +161,7 @@ function readSheetRows(sheetXml: Record<string, unknown>, sharedStrings: string[
   });
 }
 
-export async function readCandidates(excelPath: string): Promise<Candidate[]> {
+export async function readExcelRows(excelPath: string): Promise<Array<{ rowNumber: number; rawRow: ExcelRow }>> {
   if (!fs.existsSync(excelPath)) {
     throw new Error(`No existe el Excel: ${excelPath}`);
   }
@@ -180,7 +180,7 @@ export async function readCandidates(excelPath: string): Promise<Candidate[]> {
   }
 
   const headers = headerRow.values;
-  const rows: Array<{ rowNumber: number; rawRow: ExcelRow }> = sheetRows
+  return sheetRows
     .filter((row) => row.rowNumber > headerRow.rowNumber)
     .map((row) => {
       const rawRow: ExcelRow = {};
@@ -191,6 +191,10 @@ export async function readCandidates(excelPath: string): Promise<Candidate[]> {
       });
       return { rowNumber: row.rowNumber, rawRow };
     });
+}
+
+export async function readCandidates(excelPath: string): Promise<Candidate[]> {
+  const rows = await readExcelRows(excelPath);
 
   return rows
     .map(({ rowNumber, rawRow }): Candidate => {

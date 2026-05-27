@@ -12,6 +12,8 @@ Crear un `.env` tomando como base `.env.example` y completar `SUGUS_PASS`.
 
 ## Uso
 
+### Candidatos
+
 ```powershell
 npm run validate -- --excel "C:\Users\leo_d\Downloads\ACTIVOS.xlsx"
 ```
@@ -47,12 +49,33 @@ Durante esa carga el script imprime progreso cada 10 segundos. Si aparece `Sigo 
 
 En esa pantalla el panel de filtros puede quedar colapsado. El bot no necesita verlo abierto: usa los campos del DOM y dispara el boton `Buscar` igual.
 
+### Liquidaciones
+
+Para validar `Liquidaciones` > `Consulta de Liquidaciones` con el Excel de historico:
+
+```powershell
+npm run validate:liquidaciones -- --excel "C:\Users\leo_d\Downloads\Consulta_histórico_para IT.xlsx" --browser chrome --liquidacion 64968
+```
+
+Opciones utiles:
+
+```powershell
+npm run validate:liquidaciones -- --excel "C:\ruta\Consulta_histórico_para IT.xlsx" --liquidacion 64968
+npm run validate:liquidaciones -- --excel "C:\ruta\Consulta_histórico_para IT.xlsx" --limitLiquidaciones 3
+npm run validate:liquidaciones -- --excel "C:\ruta\Consulta_histórico_para IT.xlsx" --skipDetail
+npm run validate:liquidaciones -- --excel "C:\ruta\Consulta_histórico_para IT.xlsx" --liquidacionesPageTimeoutMs 120000
+```
+
+El flujo busca por `Nro. Liquidacion gente`, valida que aparezcan los recursos del Excel y, salvo que uses `--skipDetail`, entra al detalle de cada fila para comparar conceptos e importes. Si el detalle tiene una grilla distinta a la esperada, guarda captura y HTML en `reports/diagnostics`.
+
 ## Reportes
 
 Cada corrida genera:
 
 - `reports/sugus-report-YYYYMMDD-HHMMSS.csv`
 - `reports/sugus-report-YYYYMMDD-HHMMSS.json`
+- `reports/sugus-liquidaciones-report-YYYYMMDD-HHMMSS.csv`
+- `reports/sugus-liquidaciones-report-YYYYMMDD-HHMMSS.json`
 
 Estados principales:
 

@@ -7,7 +7,9 @@
     "build": "tsc",
     "check": "tsc --noEmit",
     "validate": "ts-node src/index.ts",
-    "validate:dist": "node dist/index.js"
+    "validate:dist": "node dist/index.js",
+    "validate:liquidaciones": "ts-node src/liquidacionesIndex.ts",
+    "validate:liquidaciones:dist": "node dist/liquidacionesIndex.js"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
