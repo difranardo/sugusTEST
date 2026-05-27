@@ -51,11 +51,15 @@ export class LiquidacionesBot {
         await this.openMenuIfNeeded("Liquidaciones", this.config.liquidacionesMenuTimeoutMs);
 
         this.log("Click en Liquidaciones.");
-        await this.clickMenuItem("Liquidaciones", this.config.liquidacionesMenuTimeoutMs);
+        await this.expandMenuByCode("Liquidaciones", "Liquidaciones", this.config.liquidacionesMenuTimeoutMs);
         await sleep(1000);
 
         this.log("Click en Consulta de Liquidaciones.");
-        await this.clickMenuItem("Consulta de Liquidaciones", this.config.liquidacionesMenuTimeoutMs);
+        await this.clickMenuLinkByCode(
+          "Sugus.WWSGS_Liquidacion",
+          "Consulta de Liquidaciones",
+          this.config.liquidacionesMenuTimeoutMs
+        );
         this.log(
           `Click enviado. Espero Consulta de Liquidaciones hasta ${this.msToSeconds(
             this.config.liquidacionesPageTimeoutMs
@@ -207,8 +211,36 @@ export class LiquidacionesBot {
     await this.waitForReady(timeoutMs);
   }
 
+  private async expandMenuByCode(code: string, label: string, timeoutMs: number): Promise<void> {
+    const element = await this.waitForElementPresent(this.menuCodeLocator(code), timeoutMs);
+    const expanded = await this.safeAttribute(element, "aria-expanded");
+    if (expanded === "true") {
+      return;
+    }
+
+    await this.clickElementEvenIfHidden(element);
+    await this.waitForReady(timeoutMs);
+    await sleep(1000);
+    this.log(`Menu ${label} expandido.`);
+  }
+
+  private async clickMenuLinkByCode(code: string, label: string, timeoutMs: number): Promise<void> {
+    const element = await this.waitForElementPresent(this.menuCodeLocator(code), timeoutMs);
+    await this.clickElementEvenIfHidden(element);
+    await this.waitForReady(timeoutMs);
+    this.log(`Click enviado en ${label}.`);
+  }
+
   private menuTextLocator(text: string): By {
     return By.xpath(`//span[normalize-space(.)=${this.xpathLiteral(text)}] | //a[normalize-space(.)=${this.xpathLiteral(text)}]`);
+  }
+
+  private menuCodeLocator(code: string): By {
+    return By.css(`a[data-k2btcode="${this.cssAttributeValue(code)}"]`);
+  }
+
+  private cssAttributeValue(value: string): string {
+    return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   }
 
   private async closestClickable(element: WebElement): Promise<WebElement> {
@@ -510,6 +542,15 @@ export class LiquidacionesBot {
     }
   }
 
+  private async clickElementEvenIfHidden(element: WebElement): Promise<void> {
+    if (await this.elementIsDisplayed(element)) {
+      await this.clickElement(element);
+      return;
+    }
+
+    await this.requireDriver().executeScript("arguments[0].click();", element);
+  }
+
   private async waitForDisplayed(by: By, timeoutMs: number): Promise<WebElement> {
     const driver = this.requireDriver();
     const endAt = Date.now() + timeoutMs;
@@ -609,6 +650,14 @@ export class LiquidacionesBot {
       return await this.requireDriver().getTitle();
     } catch {
       return "(no disponible)";
+    }
+  }
+
+  private async safeAttribute(element: WebElement, name: string): Promise<string> {
+    try {
+      return (await element.getAttribute(name)) ?? "";
+    } catch {
+      return "";
     }
   }
 
