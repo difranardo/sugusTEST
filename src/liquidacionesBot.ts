@@ -40,29 +40,28 @@ export class LiquidacionesBot {
 
   async openLiquidacionesPage(): Promise<void> {
     try {
-      this.log("Abriendo menu lateral de liquidaciones...");
-      await this.openMenuIfNeeded("Liquidaciones");
+      try {
+        this.log("Abriendo menu lateral de liquidaciones...");
+        await this.openMenuIfNeeded("Liquidaciones");
 
-      this.log("Click en Liquidaciones.");
-      await this.clickMenuItem("Liquidaciones");
-      await sleep(1000);
+        this.log("Click en Liquidaciones.");
+        await this.clickMenuItem("Liquidaciones");
+        await sleep(1000);
 
-      this.log("Click en Consulta de Liquidaciones.");
-      await this.clickMenuItem("Consulta de Liquidaciones", this.config.liquidacionesPageTimeoutMs);
-      this.log(
-        `Click enviado. Espero Consulta de Liquidaciones hasta ${this.msToSeconds(
-          this.config.liquidacionesPageTimeoutMs
-        )}s.`
-      );
+        this.log("Click en Consulta de Liquidaciones.");
+        await this.clickMenuItem("Consulta de Liquidaciones", this.config.liquidacionesPageTimeoutMs);
+        this.log(
+          `Click enviado. Espero Consulta de Liquidaciones hasta ${this.msToSeconds(
+            this.config.liquidacionesPageTimeoutMs
+          )}s.`
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.log(`No pude abrir por menu (${message}). Entro directo a Consulta de Liquidaciones.`);
+        await this.goToLiquidacionesUrl();
+      }
 
-      await sleep(this.config.liquidacionesAfterClickPauseMs);
-      await this.waitForReady(this.config.liquidacionesPageTimeoutMs);
-      await this.waitForDisplayedWithProgress(
-        By.id("vLIQCORLIQ_FILTER"),
-        this.config.liquidacionesPageTimeoutMs,
-        "Consulta de Liquidaciones"
-      );
-      await this.waitForElementPresent(By.id("GridContainerTbl"), this.config.timeoutMs);
+      await this.waitLiquidacionesPageLoaded();
       this.log("Pantalla Consulta de Liquidaciones cargada.");
     } catch (error) {
       const diagnostic = await this.saveDiagnostic("open-liquidaciones-page");
@@ -164,14 +163,24 @@ export class LiquidacionesBot {
       return;
     }
 
+    await this.goToLiquidacionesUrl();
+    await this.waitLiquidacionesPageLoaded();
+  }
+
+  private async goToLiquidacionesUrl(): Promise<void> {
     const liquidacionesUrl = new URL("sugus.wwsgs_liquidacion.aspx", this.config.url).toString();
     await this.requireDriver().get(liquidacionesUrl);
+  }
+
+  private async waitLiquidacionesPageLoaded(): Promise<void> {
+    await sleep(this.config.liquidacionesAfterClickPauseMs);
     await this.waitForReady(this.config.liquidacionesPageTimeoutMs);
     await this.waitForDisplayedWithProgress(
       By.id("vLIQCORLIQ_FILTER"),
       this.config.liquidacionesPageTimeoutMs,
       "Consulta de Liquidaciones"
     );
+    await this.waitForElementPresent(By.id("GridContainerTbl"), this.config.timeoutMs);
   }
 
   private async openMenuIfNeeded(menuText: string): Promise<void> {
@@ -181,6 +190,7 @@ export class LiquidacionesBot {
     }
 
     await this.click(By.id("MENUTOGGLE_MPAGE"), 8000);
+    await sleep(1000);
     await this.waitForDisplayed(locator, this.config.timeoutMs);
   }
 
