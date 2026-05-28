@@ -105,13 +105,18 @@ export class LiquidacionesBot {
   }
 
   async readDetailConcepts(row: LiquidacionGridRow, expectedRows = 0): Promise<LiquidacionDetailConceptRow[]> {
-    const href = row.detailHref || row.displayHref;
-    if (!href) {
+    if (row.displayHref) {
+      await this.openLiquidacionDisplay(row);
+    }
+
+    const detailHref = row.detailHref || (await this.findDetailHrefOnCurrentPage());
+    if (!detailHref) {
       throw new Error(`No se encontro link de detalle para recurso ${row.employeeId}.`);
     }
 
-    await this.requireDriver().get(href);
+    await this.requireDriver().get(detailHref);
     await this.waitForReady(this.config.timeoutMs);
+    await this.waitForElementPresent(By.css("table"), this.config.timeoutMs);
     await sleep(this.config.waitMs);
     return this.readAllDetailConceptRows(expectedRows);
   }
@@ -190,6 +195,50 @@ export class LiquidacionesBot {
   private async goToLiquidacionesUrl(): Promise<void> {
     const liquidacionesUrl = new URL("sugus.wwsgs_liquidacion.aspx", this.config.url).toString();
     await this.requireDriver().get(liquidacionesUrl);
+  }
+
+  private async openLiquidacionDisplay(row: LiquidacionGridRow): Promise<void> {
+    this.log(`Visualizando recurso ${row.employeeId || row.employeeName} antes de leer el detalle.`);
+    await this.requireDriver().get(row.displayHref);
+    await this.waitForReady(this.config.timeoutMs);
+    await this.waitForLiquidacionDisplayLoaded(row);
+    await sleep(this.config.waitMs);
+  }
+
+  private async waitForLiquidacionDisplayLoaded(row: LiquidacionGridRow): Promise<void> {
+    await this.waitForElementPresent(
+      By.css("#W0041W0022K2BESMAINTABLE, #span_W0041W0022LIQNRO, #W0041W0022LIQNRO"),
+      this.config.timeoutMs
+    );
+
+    if (!row.internalNumber) {
+      return;
+    }
+
+    const endAt = Date.now() + this.config.timeoutMs;
+    while (Date.now() < endAt) {
+      const loadedInternalNumber = (await this.requireDriver().executeScript(`
+        const clean = (value) => (value || '').replace(/\\s+/g, ' ').trim();
+        const readonly = document.querySelector('#span_W0041W0022LIQNRO');
+        const input = document.querySelector('#W0041W0022LIQNRO');
+        return clean(readonly ? readonly.textContent : input ? input.value : '');
+      `)) as string;
+
+      if (!loadedInternalNumber || loadedInternalNumber === row.internalNumber) {
+        return;
+      }
+
+      await sleep(500);
+    }
+
+    throw new Error(`No cargo la visualizacion de la liquidacion interna ${row.internalNumber}.`);
+  }
+
+  private async findDetailHrefOnCurrentPage(): Promise<string> {
+    return (await this.requireDriver().executeScript(`
+      const link = document.querySelector('a[href*="wwconceptoliquidacion"]');
+      return link ? link.href : '';
+    `)) as string;
   }
 
   private async waitLiquidacionesPageLoaded(initialPauseMs: number): Promise<void> {
