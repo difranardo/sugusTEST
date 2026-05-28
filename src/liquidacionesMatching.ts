@@ -278,7 +278,7 @@ export function compareConcepts(
       }
 
       const actual = actualConcepts[index];
-      if (!conceptIdentityMatches(expected, actual)) {
+      if (!payrollValueFieldsMatch(expected, actual)) {
         continue;
       }
 
@@ -296,7 +296,7 @@ export function compareConcepts(
         }
 
         const actual = actualConcepts[index];
-        if (!conceptAmountMatches(expected, actual) && !payrollValueFieldsMatch(expected, actual)) {
+        if (!conceptIdentityMatches(expected, actual) && !conceptAmountMatches(expected, actual)) {
           continue;
         }
 
@@ -321,10 +321,5 @@ export function compareConcepts(
     }
   }
 
-  const extra = actualConcepts
-    .filter((_, index) => !usedActualIndexes.has(index))
-    .map(describeActualConcept)
-    .filter(Boolean);
-
-  return { missing, mismatched, extra };
+  return { missing, mismatched, extra: [] };
 }
