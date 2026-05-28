@@ -492,12 +492,18 @@ export class LiquidacionesBot {
 
   private async clickNextPageButton(): Promise<boolean> {
     const next = (await this.requireDriver().executeScript(`
+      const visible = (element) => {
+        const style = window.getComputedStyle(element);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+        return element.getClientRects().length > 0 && (!element.parentElement || visible(element.parentElement));
+      };
       const textFor = (element) => [
         element.textContent,
         element.getAttribute('title'),
         element.getAttribute('aria-label'),
         element.getAttribute('alt'),
         element.getAttribute('value'),
+        element.getAttribute('data-event'),
         element.id,
         element.name
       ].filter(Boolean).join(' ').toLowerCase();
@@ -506,11 +512,19 @@ export class LiquidacionesBot {
         element.classList.contains('disabled') ||
         element.classList.contains('gx-disabled') ||
         element.getAttribute('aria-disabled') === 'true';
+      const eventNextCandidates = Array.from(document.querySelectorAll('[data-event="NextPage"]'))
+        .filter((element) => visible(element) && !disabled(element));
+      const eventNext =
+        eventNextCandidates.find((element) => element.getAttribute('data-items-index') === '1') ||
+        eventNextCandidates[0];
+      if (eventNext) {
+        return eventNext.closest('a,button,input,[role="button"],[data-gx-evt]') || eventNext;
+      }
       const candidates = Array.from(document.querySelectorAll('a,button,input,img')).filter((element) => {
-        if (disabled(element)) return false;
+        if (!visible(element) || disabled(element)) return false;
         const text = textFor(element);
         if (/anterior|prev|previous|primero|first/.test(text)) return false;
-        return /siguiente|next|proximo|proxima|ultimo|last|\\b>\\b|»|›/.test(text);
+        return /siguiente|next|proximo|proxima|\\b>\\b|»|›/.test(text);
       });
       const element = candidates[0];
       return element ? (element.closest('a,button,input,[role="button"],[data-gx-evt]') || element) : null;
