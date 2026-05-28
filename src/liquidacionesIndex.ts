@@ -255,6 +255,45 @@ async function main(): Promise<void> {
           .filter(({ row }) => rowMatchesExpected(row, expected));
 
         if (matches.length === 0) {
+          if (expected.employeeId) {
+            try {
+              console.log(`  No aparecio en la pagina actual. Rebusco recurso ${expected.employeeId} con filtro directo...`);
+              const fallbackRows = await bot.searchLiquidacionForEmployee(group.externalNumber, expected.employeeId);
+              const fallbackMatches = fallbackRows
+                .map((row, rowIndex) => ({ row, rowIndex }))
+                .filter(({ row }) => rowMatchesExpected(row, expected));
+
+              if (fallbackMatches.length === 1) {
+                const match = fallbackMatches[0];
+                const result = await validateExpectedEmployee(bot, expected, match.row, skipDetail);
+                results.push(result);
+                console.log(
+                  `  ${result.status} recurso ${expected.employeeId} liq interna ${match.row.internalNumber} (filtro directo)`
+                );
+                continue;
+              }
+
+              if (fallbackMatches.length > 1) {
+                const result = multipleRowsResult(
+                  expected,
+                  fallbackMatches.map(({ row }) => row)
+                );
+                results.push(result);
+                console.log(`  MULTIPLE_LIST_ROWS ${expected.employeeId} ${expected.employeeName} (filtro directo)`);
+                continue;
+              }
+            } catch (error) {
+              const result = errorResult(expected, error);
+              results.push(result);
+              console.log(
+                `  ERROR rebuscando recurso ${expected.employeeId}: ${
+                  error instanceof Error ? error.message : String(error)
+                }`
+              );
+              continue;
+            }
+          }
+
           const result = notFoundResult(expected);
           results.push(result);
           console.log(`  NOT_FOUND_LIST ${expected.employeeId} ${expected.employeeName}`);

@@ -71,7 +71,7 @@ export class LiquidacionesBot {
         await this.goToLiquidacionesUrl();
       }
 
-      await this.waitLiquidacionesPageLoaded();
+      await this.waitLiquidacionesPageLoaded(this.config.liquidacionesAfterClickPauseMs);
       this.log("Pantalla Consulta de Liquidaciones cargada.");
     } catch (error) {
       const diagnostic = await this.saveDiagnostic("open-liquidaciones-page");
@@ -92,6 +92,16 @@ export class LiquidacionesBot {
     await this.submitSearch("vLIQCORLIQ_FILTER");
     await this.waitForGridFiltered(externalNumber);
     return this.readAllLiquidacionGridRows(externalNumber, expectedRows);
+  }
+
+  async searchLiquidacionForEmployee(externalNumber: string, employeeId: string): Promise<LiquidacionGridRow[]> {
+    await this.ensureLiquidacionesPage();
+    await this.setInputById("vLIQPERLIQ", "0");
+    await this.setInputById("vLIQCORLIQ_FILTER", externalNumber);
+    await this.setInputById("vLIQRECLEG", employeeId);
+    await this.submitSearch("vLIQRECLEG");
+    await this.waitForGridFiltered(externalNumber);
+    return this.readAllLiquidacionGridRows(externalNumber, 1);
   }
 
   async readDetailConcepts(row: LiquidacionGridRow, expectedRows = 0): Promise<LiquidacionDetailConceptRow[]> {
@@ -174,7 +184,7 @@ export class LiquidacionesBot {
     }
 
     await this.goToLiquidacionesUrl();
-    await this.waitLiquidacionesPageLoaded();
+    await this.waitLiquidacionesPageLoaded(0);
   }
 
   private async goToLiquidacionesUrl(): Promise<void> {
@@ -182,8 +192,10 @@ export class LiquidacionesBot {
     await this.requireDriver().get(liquidacionesUrl);
   }
 
-  private async waitLiquidacionesPageLoaded(): Promise<void> {
-    await sleep(this.config.liquidacionesAfterClickPauseMs);
+  private async waitLiquidacionesPageLoaded(initialPauseMs: number): Promise<void> {
+    if (initialPauseMs > 0) {
+      await sleep(initialPauseMs);
+    }
     await this.waitForReady(this.config.liquidacionesPageTimeoutMs);
     await this.waitForDisplayedWithProgress(
       By.id("vLIQCORLIQ_FILTER"),
