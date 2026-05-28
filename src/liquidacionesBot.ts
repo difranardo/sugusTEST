@@ -504,7 +504,15 @@ export class LiquidacionesBot {
         const quantityIndex = firstIndex(headers, [(header) => header.includes('cantidad'), (header) => header === 'cant']);
         const unitValueIndex = firstIndex(headers, [
           (header) => header.includes('valor') && header.includes('unitario'),
-          (header) => header.includes('unitario')
+          (header) => header.includes('unitario'),
+          (header) =>
+            header.includes('importe') &&
+            !header.includes('liq') &&
+            !header.includes('liquid') &&
+            !header.includes('gravado') &&
+            !header.includes('jub') &&
+            !header.includes('fac') &&
+            !header.includes('fact')
         ]);
         const amountIndex = firstIndex(headers, [
           (header) => header.includes('monto') && header.includes('liq'),
