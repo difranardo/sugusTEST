@@ -468,7 +468,9 @@ export class LiquidacionesBot {
         .replace(/[\\u0300-\\u036f]/g, '')
         .toLowerCase();
       const colIndex = (node, fallback) => {
-        const value = Number(node.getAttribute('data-colindex'));
+        const rawValue = node.getAttribute('data-colindex');
+        if (rawValue === null || rawValue === '') return fallback;
+        const value = Number(rawValue);
         return Number.isFinite(value) ? value : fallback;
       };
       const cellText = (cellsByColumn, index) => {
