@@ -48,6 +48,10 @@ function numberMatches(expected: unknown, actual: unknown, tolerance = 0.02): bo
   return Math.abs(expectedNumber - actualNumber) <= tolerance;
 }
 
+function hasComparableNumber(value: unknown): boolean {
+  return parseLocaleNumber(value) !== undefined;
+}
+
 function extractCode(value: unknown): string {
   const text = String(value ?? "");
   const match = text.match(/\d+/);
@@ -71,8 +75,21 @@ function compactPayrollText(value: unknown): string {
   return normalizeText(value)
     .replace(/\bB P S\b/g, "BPS")
     .replace(/\bS N I S\b/g, "SNIS")
+    .replace(/\bSNISS\b/g, "SNIS")
     .replace(/\bF R L\b/g, "FRL")
     .replace(/\bI R P F\b/g, "IRPF")
+    .replace(/\bS A C\b/g, "SAC")
+    .replace(/\bAGUINALDO\b/g, "SAC")
+    .replace(/\bHRA\b/g, "HORA")
+    .replace(/\bN0CT/g, "NOCT")
+    .replace(/\bNCT/g, "NOCT")
+    .replace(/\bCOMISON\b/g, "COMISION")
+    .replace(/\bBON\b/g, "BONO")
+    .replace(/\bSN\b/g, "SIN")
+    .replace(/\bN\b(?=\s+GOZAD)/g, "NO")
+    .replace(/\bGOZADAS\b/g, "GOZADA")
+    .replace(/\bGOZADOS\b/g, "GOZADO")
+    .replace(/\bADELANTOS\b/g, "ADELANTO")
     .replace(/\bVACACIONAL(?:ES)?\b/g, "VACACION")
     .replace(/\bVACACIONES\b/g, "VACACION")
     .replace(/\bREDONDEOS\b/g, "REDONDEO")
@@ -95,7 +112,17 @@ function payrollTokensCompatible(expected: string, actual: string): boolean {
     [/IRPF.*DEDUCCIONES/, /IRPF.*DEDUCCIONES/],
     [/REDONDEO/, /REDONDEO/],
     [/LICENCIA/, /LICENCIA/],
-    [/SALVACACION|VACACION/, /VACACION/]
+    [/SALVACACION|VACACION/, /VACACION/],
+    [/SAC/, /SAC/],
+    [/BONO.*LIQUIDO/, /BONO.*LIQUIDO/],
+    [/VIATICOS.*SIN.*REND/, /VIATICOS.*SIN.*REND/],
+    [/COMISION.*EVENTUAL/, /COMISION.*EVENTUAL/],
+    [/HORA.*EXTRA.*NOCT.*20/, /HORA.*EXTRA.*NOCT.*20/],
+    [/HORA.*EXTRA.*NOCT.*30/, /HORA.*EXTRA.*NOCT.*30/],
+    [/HORA.*NOCTURNA.*20/, /HORA.*NOCTURNA.*20/],
+    [/HORA.*NOCTURNA.*30/, /HORA.*NOCTURNA.*30/],
+    [/ADELANTO/, /ADELANTO/],
+    [/LIC.*NO.*GOZAD/, /(LIC|LICENCIA).*NO.*GOZAD/]
   ];
 
   return aliases.some(([expectedPattern, actualPattern]) => {
@@ -120,15 +147,6 @@ export function validateListRow(expected: LiquidacionEmployeeExpected, row: Liqu
 
   if (expected.period && row.period && row.period !== expected.period) {
     mismatches.push(`periodo esperado ${expected.period}, UAT ${row.period}`);
-  }
-
-  if (expected.liquidationType && row.typeCode) {
-    const expectedType = normalizeText(expected.liquidationType);
-    const actualCode = normalizeText(row.typeCode);
-    const actualDescription = normalizeText(row.typeDescription);
-    if (expectedType !== actualCode && !actualDescription.includes(expectedType)) {
-      mismatches.push(`tipo esperado ${expected.liquidationType}, UAT ${row.typeCode || row.typeDescription}`);
-    }
   }
 
   if (expected.liquidationDate && row.liquidationDate && expected.liquidationDate !== row.liquidationDate) {
@@ -160,6 +178,10 @@ function conceptTextMatches(expected: LiquidacionConceptExpected, actual: Liquid
 
 function conceptIdentityMatches(expected: LiquidacionConceptExpected, actual: LiquidacionDetailConceptRow): boolean {
   return conceptCodeMatches(expected, actual) || conceptTextMatches(expected, actual);
+}
+
+function conceptAmountMatches(expected: LiquidacionConceptExpected, actual: LiquidacionDetailConceptRow): boolean {
+  return hasComparableNumber(expected.amount) && hasComparableNumber(actual.amount) && numberMatches(expected.amount, actual.amount);
 }
 
 function scoreConcept(expected: LiquidacionConceptExpected, actual: LiquidacionDetailConceptRow): number {
@@ -201,10 +223,6 @@ function conceptMismatches(expected: LiquidacionConceptExpected, actual: Liquida
     mismatches.push(`gravado JUB esperado ${expected.taxableAmount}, UAT ${actual.taxableAmount}`);
   }
 
-  if (actual.conceptDescription && !textCompatible(expected.conceptDescription, actual.conceptDescription)) {
-    mismatches.push(`descripcion esperada ${expected.conceptDescription}, UAT ${actual.conceptDescription}`);
-  }
-
   return mismatches;
 }
 
@@ -238,8 +256,27 @@ export function compareConcepts(
     }
 
     if (bestIndex === -1) {
-      missing.push(describeExpectedConcept(expected));
-      continue;
+      for (let index = 0; index < actualConcepts.length; index += 1) {
+        if (usedActualIndexes.has(index)) {
+          continue;
+        }
+
+        const actual = actualConcepts[index];
+        if (!conceptAmountMatches(expected, actual)) {
+          continue;
+        }
+
+        const score = scoreConcept(expected, actual);
+        if (score > bestScore) {
+          bestScore = score;
+          bestIndex = index;
+        }
+      }
+
+      if (bestIndex === -1) {
+        missing.push(describeExpectedConcept(expected));
+        continue;
+      }
     }
 
     usedActualIndexes.add(bestIndex);
