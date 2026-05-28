@@ -99,5 +99,6 @@ export interface LiquidacionValidationResult {
   mismatchedConcepts: string[];
   extraConcepts: string[];
   listRow?: LiquidacionGridRow;
+  detailRows?: LiquidacionDetailConceptRow[];
   error?: string;
 }

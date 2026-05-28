@@ -115,6 +115,7 @@ async function validateExpectedEmployee(
   }
 
   const detailRows = await bot.readDetailConcepts(row, expected.concepts.length);
+  result.detailRows = detailRows;
   const comparison = compareConcepts(expected.concepts, detailRows);
   result.foundConcepts = detailRows.length;
   result.missingConcepts = comparison.missing;

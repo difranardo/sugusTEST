@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { LiquidacionStatus, LiquidacionValidationResult } from "./liquidacionesTypes";
+import { LiquidacionDetailConceptRow, LiquidacionStatus, LiquidacionValidationResult } from "./liquidacionesTypes";
 
 function timestamp(): string {
   return new Date().toISOString().replace(/[-:]/g, "").replace(/\..+$/, "").replace("T", "-");
@@ -12,6 +12,19 @@ function csvEscape(value: unknown): string {
     return `"${text.replace(/"/g, '""')}"`;
   }
   return text;
+}
+
+function formatDetailConcept(row: LiquidacionDetailConceptRow): string {
+  return [
+    row.conceptCode,
+    row.conceptDescription,
+    `valorUnit=${row.unitValue}`,
+    `montoLiq=${row.amount}`,
+    `montoFac=${row.billedAmount}`,
+    row.rawCells.length > 0 ? `raw=[${row.rawCells.join(" | ")}]` : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 export function summarizeLiquidaciones(results: LiquidacionValidationResult[]): Record<LiquidacionStatus, number> {
@@ -54,6 +67,7 @@ export function writeLiquidacionesReports(
     "missingConcepts",
     "mismatchedConcepts",
     "extraConcepts",
+    "uatDetailConcepts",
     "uatType",
     "uatPeriod",
     "uatStatus",
@@ -78,6 +92,7 @@ export function writeLiquidacionesReports(
         result.missingConcepts.join(" || "),
         result.mismatchedConcepts.join(" || "),
         result.extraConcepts.join(" || "),
+        result.detailRows?.map(formatDetailConcept).join(" || ") ?? "",
         row?.typeDescription || row?.typeCode || "",
         row?.period ?? "",
         row?.status ?? "",
