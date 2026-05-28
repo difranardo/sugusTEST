@@ -502,9 +502,20 @@ export class LiquidacionesBot {
         const descriptionDirectIndex = firstIndex(headers, [(header) => header.includes('descripcion'), (header) => header === 'desc']);
         const descriptionIndex = descriptionDirectIndex >= 0 ? descriptionDirectIndex : (conceptIndexes[1] ?? -1);
         const quantityIndex = firstIndex(headers, [(header) => header.includes('cantidad'), (header) => header === 'cant']);
-        const unitValueIndex = firstIndex(headers, [(header) => header.includes('unitario') || header.includes('valor')]);
+        const unitValueIndex = firstIndex(headers, [
+          (header) => header.includes('valor') && header.includes('unitario'),
+          (header) => header.includes('unitario')
+        ]);
         const amountIndex = firstIndex(headers, [
-          (header) => header.includes('importe') && !header.includes('gravado') && !header.includes('jub')
+          (header) => header.includes('monto') && header.includes('liq'),
+          (header) => header.includes('monto') && header.includes('liquid'),
+          (header) => header.includes('importe') && header.includes('liq'),
+          (header) => header.includes('importe') && !header.includes('gravado') && !header.includes('jub') && !header.includes('fac') && !header.includes('fact')
+        ]);
+        const billedAmountIndex = firstIndex(headers, [
+          (header) => header.includes('monto') && (header.includes('fac') || header.includes('fact')),
+          (header) => header.includes('importe') && (header.includes('fac') || header.includes('fact')),
+          (header) => header.includes('facturado')
         ]);
         const taxableIndex = firstIndex(headers, [(header) => header.includes('gravado') || header.includes('jub')]);
         const typeIndex = firstIndex(headers, [(header) => header.includes('tipo')]);
@@ -527,6 +538,7 @@ export class LiquidacionesBot {
             quantity: cellText(cellsByColumn, quantityIndex),
             unitValue: cellText(cellsByColumn, unitValueIndex),
             amount: cellText(cellsByColumn, amountIndex),
+            billedAmount: cellText(cellsByColumn, billedAmountIndex),
             costCenter: cellText(cellsByColumn, costCenterIndex),
             taxableAmount: cellText(cellsByColumn, taxableIndex),
             rawCells,

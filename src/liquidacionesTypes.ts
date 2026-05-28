@@ -16,6 +16,7 @@ export interface LiquidacionConceptExpected {
   quantity: string;
   unitValue: string;
   amount: string;
+  billedAmount: string;
   costCenter: string;
   costCenterDescription: string;
   laborAccum: string;
@@ -77,6 +78,7 @@ export interface LiquidacionDetailConceptRow {
   quantity: string;
   unitValue: string;
   amount: string;
+  billedAmount: string;
   costCenter: string;
   taxableAmount: string;
   rawCells: string[];

@@ -157,13 +157,23 @@ export function validateListRow(expected: LiquidacionEmployeeExpected, row: Liqu
 }
 
 export function describeExpectedConcept(concept: LiquidacionConceptExpected): string {
-  return `${concept.conceptCode} ${concept.conceptDescription} imp=${normalizeNumberText(concept.amount)}`;
+  const fields = [
+    `valorUnit=${normalizeNumberText(concept.unitValue)}`,
+    `montoLiq=${normalizeNumberText(concept.amount)}`,
+    concept.billedAmount ? `montoFac=${normalizeNumberText(concept.billedAmount)}` : ""
+  ].filter(Boolean);
+  return `${concept.conceptCode} ${concept.conceptDescription} ${fields.join(" ")}`.trim();
 }
 
 function describeActualConcept(concept: LiquidacionDetailConceptRow): string {
   const code = extractCode(concept.conceptCode || concept.rawText);
   const description = concept.conceptDescription || concept.rawText;
-  return `${code} ${description} imp=${normalizeNumberText(concept.amount)}`.trim();
+  const fields = [
+    `valorUnit=${normalizeNumberText(concept.unitValue)}`,
+    `montoLiq=${normalizeNumberText(concept.amount)}`,
+    concept.billedAmount ? `montoFac=${normalizeNumberText(concept.billedAmount)}` : ""
+  ].filter(Boolean);
+  return `${code} ${description} ${fields.join(" ")}`.trim();
 }
 
 function conceptCodeMatches(expected: LiquidacionConceptExpected, actual: LiquidacionDetailConceptRow): boolean {
@@ -184,6 +194,21 @@ function conceptAmountMatches(expected: LiquidacionConceptExpected, actual: Liqu
   return hasComparableNumber(expected.amount) && hasComparableNumber(actual.amount) && numberMatches(expected.amount, actual.amount);
 }
 
+function comparableFieldMatches(expected: unknown, actual: unknown, tolerance = 0.02): boolean {
+  if (!hasComparableNumber(expected)) {
+    return true;
+  }
+  return hasComparableNumber(actual) && numberMatches(expected, actual, tolerance);
+}
+
+function payrollValueFieldsMatch(expected: LiquidacionConceptExpected, actual: LiquidacionDetailConceptRow): boolean {
+  return (
+    comparableFieldMatches(expected.unitValue, actual.unitValue) &&
+    comparableFieldMatches(expected.amount, actual.amount) &&
+    comparableFieldMatches(expected.billedAmount, actual.billedAmount)
+  );
+}
+
 function scoreConcept(expected: LiquidacionConceptExpected, actual: LiquidacionDetailConceptRow): number {
   let score = 0;
   if (conceptCodeMatches(expected, actual)) {
@@ -194,6 +219,12 @@ function scoreConcept(expected: LiquidacionConceptExpected, actual: LiquidacionD
   }
   if (numberMatches(expected.amount, actual.amount)) {
     score += 20;
+  }
+  if (numberMatches(expected.unitValue, actual.unitValue)) {
+    score += 10;
+  }
+  if (numberMatches(expected.billedAmount, actual.billedAmount)) {
+    score += 10;
   }
   if (textCompatible(expected.conceptDescription, actual.conceptDescription || actual.rawText)) {
     score += 10;
@@ -207,21 +238,24 @@ function scoreConcept(expected: LiquidacionConceptExpected, actual: LiquidacionD
 function conceptMismatches(expected: LiquidacionConceptExpected, actual: LiquidacionDetailConceptRow): string[] {
   const mismatches: string[] = [];
 
-  if (!numberMatches(expected.amount, actual.amount)) {
-    mismatches.push(`importe esperado ${expected.amount}, UAT ${actual.amount}`);
-  }
+  const compareNumberField = (label: string, expectedValue: string, actualValue: string): void => {
+    if (!hasComparableNumber(expectedValue)) {
+      return;
+    }
 
-  if (actual.quantity && !numberMatches(expected.quantity, actual.quantity, 0.0001)) {
-    mismatches.push(`cantidad esperada ${expected.quantity}, UAT ${actual.quantity}`);
-  }
+    if (!hasComparableNumber(actualValue)) {
+      mismatches.push(`${label} esperado ${expectedValue}, UAT sin dato`);
+      return;
+    }
 
-  if (actual.unitValue && !numberMatches(expected.unitValue, actual.unitValue)) {
-    mismatches.push(`valor unitario esperado ${expected.unitValue}, UAT ${actual.unitValue}`);
-  }
+    if (!numberMatches(expectedValue, actualValue)) {
+      mismatches.push(`${label} esperado ${expectedValue}, UAT ${actualValue}`);
+    }
+  };
 
-  if (actual.taxableAmount && !numberMatches(expected.taxableAmount, actual.taxableAmount)) {
-    mismatches.push(`gravado JUB esperado ${expected.taxableAmount}, UAT ${actual.taxableAmount}`);
-  }
+  compareNumberField("valor unitario", expected.unitValue, actual.unitValue);
+  compareNumberField("monto liq", expected.amount, actual.amount);
+  compareNumberField("monto fac", expected.billedAmount, actual.billedAmount);
 
   return mismatches;
 }
@@ -262,7 +296,7 @@ export function compareConcepts(
         }
 
         const actual = actualConcepts[index];
-        if (!conceptAmountMatches(expected, actual)) {
+        if (!conceptAmountMatches(expected, actual) && !payrollValueFieldsMatch(expected, actual)) {
           continue;
         }
 

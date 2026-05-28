@@ -1,7 +1,7 @@
 import { loadConfig } from "./config";
 import { readLiquidacionesExcel } from "./liquidacionesExcel";
 import { LiquidacionesBot } from "./liquidacionesBot";
-import { compareConcepts, validateListRow } from "./liquidacionesMatching";
+import { compareConcepts } from "./liquidacionesMatching";
 import { writeLiquidacionesReports, summarizeLiquidaciones } from "./liquidacionesReporter";
 import {
   LiquidacionEmployeeExpected,
@@ -106,15 +106,11 @@ async function validateExpectedEmployee(
   skipDetail: boolean
 ): Promise<LiquidacionValidationResult> {
   const result = baseResult(expected, row);
-  const listMismatches = validateListRow(expected, row);
 
   if (skipDetail) {
-    result.status = listMismatches.length > 0 ? "LIST_MISMATCH" : "MATCH";
-    result.matched = result.status === "MATCH";
-    result.reason =
-      listMismatches.length > 0
-        ? `Diferencias en la grilla: ${listMismatches.join(" | ")}`
-        : "La grilla coincide. Detalle omitido por --skipDetail.";
+    result.status = "MATCH";
+    result.matched = true;
+    result.reason = "Recurso encontrado. Detalle omitido por --skipDetail.";
     return result;
   }
 
@@ -131,7 +127,6 @@ async function validateExpectedEmployee(
   if (hasDetailDifferences) {
     result.status = "DETAIL_MISMATCH";
     result.reason = [
-      listMismatches.length > 0 ? `Diferencias en la grilla: ${listMismatches.join(" | ")}` : "",
       comparison.missing.length > 0 ? `Faltan conceptos: ${comparison.missing.length}` : "",
       comparison.mismatched.length > 0 ? `Conceptos con diferencias: ${comparison.mismatched.length}` : "",
       comparison.extra.length > 0 ? `Conceptos extra en UAT: ${comparison.extra.length}` : ""
@@ -141,15 +136,9 @@ async function validateExpectedEmployee(
     return result;
   }
 
-  if (listMismatches.length > 0) {
-    result.status = "LIST_MISMATCH";
-    result.reason = `Diferencias en la grilla: ${listMismatches.join(" | ")}`;
-    return result;
-  }
-
   result.status = "MATCH";
   result.matched = true;
-  result.reason = "Grilla y detalle coinciden.";
+  result.reason = "Recurso encontrado. Valor unitario, monto liq y monto fac coinciden.";
   return result;
 }
 

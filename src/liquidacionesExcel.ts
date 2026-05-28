@@ -83,6 +83,7 @@ function makeConcept(rowNumber: number, row: Map<string, unknown>): LiquidacionC
     quantity: getCell(row, "Cantidad (liq)"),
     unitValue: getCell(row, "Valor unitario (liq)"),
     amount: getCell(row, "Importe (liq)"),
+    billedAmount: getCell(row, "Monto Fac", "Monto facturado", "Importe facturado", "Monto factura", "Importe factura"),
     costCenter: normalizeCode(getCell(row, "Centro costo (liq)")),
     costCenterDescription: getCell(row, "Desc centro costo (liq)"),
     laborAccum: normalizeCode(getCell(row, "Acumul laboral")),
