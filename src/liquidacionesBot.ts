@@ -491,14 +491,14 @@ export class LiquidacionesBot {
         const headers = headerNodes
           .map((header, index) => ({ header: normalize(header.textContent), index: colIndex(header, index) }))
           .filter(({ header }) => header);
-        const hasConcept = headers.some(({ header }) => header.includes('concepto'));
-        const hasAmount = headers.some(({ header }) => header.includes('importe') || header.includes('cantidad') || header.includes('valor'));
-        if (!hasConcept || !hasAmount) {
-          continue;
-        }
 
         const conceptIndexes = allIndexes(headers, [(header) => header.includes('concepto')]);
-        const conceptIndex = conceptIndexes[0] ?? -1;
+        const codeIndex = firstIndex(headers, [
+          (header) => header === 'codigo' || header === 'cod',
+          (header) => header.startsWith('codigo') && !header.includes('rel'),
+          (header) => header.startsWith('cod') && !header.includes('rel')
+        ]);
+        const conceptIndex = codeIndex >= 0 ? codeIndex : (conceptIndexes[0] ?? -1);
         const descriptionDirectIndex = firstIndex(headers, [(header) => header.includes('descripcion'), (header) => header === 'desc']);
         const descriptionIndex = descriptionDirectIndex >= 0 ? descriptionDirectIndex : (conceptIndexes[1] ?? -1);
         const quantityIndex = firstIndex(headers, [(header) => header.includes('cantidad'), (header) => header === 'cant']);
@@ -525,6 +525,12 @@ export class LiquidacionesBot {
           (header) => header.includes('importe') && (header.includes('fac') || header.includes('fact')),
           (header) => header.includes('facturado')
         ]);
+        const hasConcept = conceptIndex >= 0 || descriptionIndex >= 0;
+        const hasAmount = unitValueIndex >= 0 || amountIndex >= 0 || billedAmountIndex >= 0;
+        if (!hasConcept || !hasAmount) {
+          continue;
+        }
+
         const taxableIndex = firstIndex(headers, [(header) => header.includes('gravado') || header.includes('jub')]);
         const typeIndex = firstIndex(headers, [(header) => header.includes('tipo')]);
         const costCenterIndex = firstIndex(headers, [(header) => header.includes('centro') && header.includes('costo')]);
