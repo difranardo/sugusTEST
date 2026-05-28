@@ -64,14 +64,6 @@ function normalizeDate(value: string): string {
   return `${pad2(Number(parts[1]))}/${pad2(Number(parts[2]))}/${year}`;
 }
 
-function periodFromDate(value: string): string {
-  const parts = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (!parts) {
-    return "";
-  }
-  return `${parts[3]}${parts[2]}`;
-}
-
 function compareCodes(a: string, b: string): number {
   const aNumber = Number(a);
   const bNumber = Number(b);
@@ -125,13 +117,14 @@ export async function readLiquidacionesExcel(excelPath: string, startRow = 2): P
     const concept = makeConcept(rowNumber, row);
 
     if (!employeeGroups.has(key)) {
+      const period = normalizeCode(getCell(row, "Periodo", "Período", "Periodo liquidacion", "Periodo liquidación"));
       employeeGroups.set(key, {
         externalNumber,
         employeeId,
         employeeName,
         document: normalizeCode(getCell(row, "Documento identidad")),
         liquidationDate,
-        period: periodFromDate(liquidationDate),
+        period,
         description: getCell(row, "Descripcion liquidacion"),
         liquidationType: getCell(row, "Tipo liquidacion (liq)"),
         costCenter: normalizeCode(getCell(row, "Centro costo (car)")),

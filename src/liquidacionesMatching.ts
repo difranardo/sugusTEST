@@ -58,7 +58,49 @@ function textCompatible(expected: string, actual: string): boolean {
   if (!expected || !actual) {
     return true;
   }
-  return containsAllTokens(expected, actual) || containsAllTokens(actual, expected);
+  return (
+    containsAllTokens(expected, actual) ||
+    containsAllTokens(actual, expected) ||
+    compactPayrollText(expected).includes(compactPayrollText(actual)) ||
+    compactPayrollText(actual).includes(compactPayrollText(expected)) ||
+    payrollTokensCompatible(expected, actual)
+  );
+}
+
+function compactPayrollText(value: unknown): string {
+  return normalizeText(value)
+    .replace(/\bB P S\b/g, "BPS")
+    .replace(/\bS N I S\b/g, "SNIS")
+    .replace(/\bF R L\b/g, "FRL")
+    .replace(/\bI R P F\b/g, "IRPF")
+    .replace(/\bVACACIONAL(?:ES)?\b/g, "VACACION")
+    .replace(/\bVACACIONES\b/g, "VACACION")
+    .replace(/\bREDONDEOS\b/g, "REDONDEO")
+    .replace(/[^A-Z0-9]+/g, "");
+}
+
+function payrollTokensCompatible(expected: string, actual: string): boolean {
+  const expectedCompact = compactPayrollText(expected);
+  const actualCompact = compactPayrollText(actual);
+
+  if (!expectedCompact || !actualCompact) {
+    return false;
+  }
+
+  const aliases: Array<[RegExp, RegExp]> = [
+    [/BPS/, /BPS/],
+    [/SNIS/, /SNIS|FONASA/],
+    [/FRL/, /FRL/],
+    [/IRPF.*PRIMARIO/, /IRPF.*PRIMARIO/],
+    [/IRPF.*DEDUCCIONES/, /IRPF.*DEDUCCIONES/],
+    [/REDONDEO/, /REDONDEO/],
+    [/LICENCIA/, /LICENCIA/],
+    [/SALVACACION|VACACION/, /VACACION/]
+  ];
+
+  return aliases.some(([expectedPattern, actualPattern]) => {
+    return expectedPattern.test(expectedCompact) && actualPattern.test(actualCompact);
+  });
 }
 
 export function validateListRow(expected: LiquidacionEmployeeExpected, row: LiquidacionGridRow): string[] {
@@ -111,10 +153,22 @@ function conceptCodeMatches(expected: LiquidacionConceptExpected, actual: Liquid
   return Boolean(expected.conceptCode && actualCode && expected.conceptCode === actualCode);
 }
 
+function conceptTextMatches(expected: LiquidacionConceptExpected, actual: LiquidacionDetailConceptRow): boolean {
+  const actualText = [actual.conceptDescription, actual.conceptCode, actual.rawText].filter(Boolean).join(" ");
+  return textCompatible(expected.conceptDescription, actualText);
+}
+
+function conceptIdentityMatches(expected: LiquidacionConceptExpected, actual: LiquidacionDetailConceptRow): boolean {
+  return conceptCodeMatches(expected, actual) || conceptTextMatches(expected, actual);
+}
+
 function scoreConcept(expected: LiquidacionConceptExpected, actual: LiquidacionDetailConceptRow): number {
   let score = 0;
   if (conceptCodeMatches(expected, actual)) {
     score += 100;
+  }
+  if (conceptTextMatches(expected, actual)) {
+    score += 40;
   }
   if (numberMatches(expected.amount, actual.amount)) {
     score += 20;
@@ -172,7 +226,7 @@ export function compareConcepts(
       }
 
       const actual = actualConcepts[index];
-      if (!conceptCodeMatches(expected, actual)) {
+      if (!conceptIdentityMatches(expected, actual)) {
         continue;
       }
 

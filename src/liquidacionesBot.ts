@@ -406,10 +406,19 @@ export class LiquidacionesBot {
         .normalize('NFD')
         .replace(/[\\u0300-\\u036f]/g, '')
         .toLowerCase();
-      const cellText = (cells, index) => index >= 0 && cells[index] ? clean(cells[index].textContent) : '';
-      const firstIndex = (headers, tests) => headers.findIndex((header) => tests.some((test) => test(header)));
+      const colIndex = (node, fallback) => {
+        const value = Number(node.getAttribute('data-colindex'));
+        return Number.isFinite(value) ? value : fallback;
+      };
+      const cellText = (cellsByColumn, index) => {
+        const cell = cellsByColumn.get(index);
+        return cell ? clean(cell.textContent) : '';
+      };
+      const firstIndex = (headers, tests) => {
+        const found = headers.find(({ header }) => tests.some((test) => test(header)));
+        return found ? found.index : -1;
+      };
       const allIndexes = (headers, tests) => headers
-        .map((header, index) => ({ header, index }))
         .filter(({ header }) => tests.some((test) => test(header)))
         .map(({ index }) => index);
 
@@ -418,9 +427,11 @@ export class LiquidacionesBot {
 
       for (const table of tables) {
         const headerNodes = Array.from(table.querySelectorAll('thead th'));
-        const headers = headerNodes.map((header) => normalize(header.textContent));
-        const hasConcept = headers.some((header) => header.includes('concepto'));
-        const hasAmount = headers.some((header) => header.includes('importe') || header.includes('cantidad') || header.includes('valor'));
+        const headers = headerNodes
+          .map((header, index) => ({ header: normalize(header.textContent), index: colIndex(header, index) }))
+          .filter(({ header }) => header);
+        const hasConcept = headers.some(({ header }) => header.includes('concepto'));
+        const hasAmount = headers.some(({ header }) => header.includes('importe') || header.includes('cantidad') || header.includes('valor'));
         if (!hasConcept || !hasAmount) {
           continue;
         }
@@ -441,6 +452,7 @@ export class LiquidacionesBot {
         const rows = Array.from(table.querySelectorAll('tbody tr')).filter((row) => row.querySelectorAll('td').length > 0);
         for (const row of rows) {
           const cells = Array.from(row.querySelectorAll('td'));
+          const cellsByColumn = new Map(cells.map((cell, index) => [colIndex(cell, index), cell]));
           const rawCells = cells.map((cell) => clean(cell.textContent));
           const rawText = clean(row.textContent);
           if (!rawText) {
@@ -448,14 +460,14 @@ export class LiquidacionesBot {
           }
 
           result.push({
-            conceptType: cellText(cells, typeIndex),
-            conceptCode: cellText(cells, conceptIndex),
-            conceptDescription: cellText(cells, descriptionIndex),
-            quantity: cellText(cells, quantityIndex),
-            unitValue: cellText(cells, unitValueIndex),
-            amount: cellText(cells, amountIndex),
-            costCenter: cellText(cells, costCenterIndex),
-            taxableAmount: cellText(cells, taxableIndex),
+            conceptType: cellText(cellsByColumn, typeIndex),
+            conceptCode: cellText(cellsByColumn, conceptIndex),
+            conceptDescription: cellText(cellsByColumn, descriptionIndex),
+            quantity: cellText(cellsByColumn, quantityIndex),
+            unitValue: cellText(cellsByColumn, unitValueIndex),
+            amount: cellText(cellsByColumn, amountIndex),
+            costCenter: cellText(cellsByColumn, costCenterIndex),
+            taxableAmount: cellText(cellsByColumn, taxableIndex),
             rawCells,
             rawText
           });
