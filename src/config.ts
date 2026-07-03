@@ -122,6 +122,28 @@ export function loadConfig(argv = process.argv.slice(2)): AppConfig {
       args.liquidacionesPageTimeoutMs,
       asNumber(process.env.SUGUS_LIQUIDACIONES_PAGE_TIMEOUT_MS, 120000)
     ),
+    facturacionMenuPauseMs: asNumber(
+      args.facturacionMenuPauseMs,
+      asNumber(process.env.SUGUS_FACTURACION_MENU_PAUSE_MS, 5000)
+    ),
+    facturacionMenuTimeoutMs: asNumber(
+      args.facturacionMenuTimeoutMs,
+      asNumber(process.env.SUGUS_FACTURACION_MENU_TIMEOUT_MS, 120000)
+    ),
+    facturacionAfterClickPauseMs: asNumber(
+      args.facturacionAfterClickPauseMs,
+      asNumber(process.env.SUGUS_FACTURACION_AFTER_CLICK_PAUSE_MS, 5000)
+    ),
+    facturacionPageTimeoutMs: asNumber(
+      args.facturacionPageTimeoutMs,
+      asNumber(process.env.SUGUS_FACTURACION_PAGE_TIMEOUT_MS, 120000)
+    ),
+    facturacionTipo: asString(args.tipo, process.env.SUGUS_FACTURACION_TIPO || "A").toUpperCase(),
+    facturacionFechaDesde: asString(
+      args.facturacionFechaDesde,
+      process.env.SUGUS_FACTURACION_FECHA_DESDE || "01/01/2000"
+    ),
+    facturacionUrl: asString(args.facturacionUrl, process.env.SUGUS_FACTURACION_URL || ""),
     limit: args.limit === undefined ? undefined : asNumber(args.limit, 0),
     startRow: args.startRow === undefined ? undefined : asNumber(args.startRow, 2),
     keepOpen: asBoolean(args.keepOpen, false),

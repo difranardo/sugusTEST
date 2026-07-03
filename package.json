@@ -9,7 +9,9 @@
     "validate": "ts-node src/index.ts",
     "validate:dist": "node dist/index.js",
     "validate:liquidaciones": "ts-node src/liquidacionesIndex.ts",
-    "validate:liquidaciones:dist": "node dist/liquidacionesIndex.js"
+    "validate:liquidaciones:dist": "node dist/liquidacionesIndex.js",
+    "validate:facturacion": "ts-node src/facturacionIndex.ts",
+    "validate:facturacion:dist": "node dist/facturacionIndex.js"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

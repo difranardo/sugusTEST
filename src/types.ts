@@ -18,6 +18,13 @@ export interface AppConfig {
   liquidacionesMenuTimeoutMs: number;
   liquidacionesAfterClickPauseMs: number;
   liquidacionesPageTimeoutMs: number;
+  facturacionMenuPauseMs: number;
+  facturacionMenuTimeoutMs: number;
+  facturacionAfterClickPauseMs: number;
+  facturacionPageTimeoutMs: number;
+  facturacionTipo: string;
+  facturacionFechaDesde: string;
+  facturacionUrl: string;
   limit?: number;
   startRow?: number;
   keepOpen: boolean;

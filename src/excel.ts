@@ -7,7 +7,7 @@ import { joinParts, normalizeDocument, normalizeHeader } from "./normalize";
 export type ExcelRow = Record<string, unknown>;
 type XmlNode = string | number | boolean | null | undefined | Record<string, unknown> | XmlNode[];
 
-interface SheetRow {
+export interface SheetRow {
   rowNumber: number;
   values: string[];
 }
@@ -161,7 +161,7 @@ function readSheetRows(sheetXml: Record<string, unknown>, sharedStrings: string[
   });
 }
 
-export async function readExcelRows(excelPath: string): Promise<Array<{ rowNumber: number; rawRow: ExcelRow }>> {
+export async function readExcelSheetRows(excelPath: string): Promise<SheetRow[]> {
   if (!fs.existsSync(excelPath)) {
     throw new Error(`No existe el Excel: ${excelPath}`);
   }
@@ -172,7 +172,11 @@ export async function readExcelRows(excelPath: string): Promise<Array<{ rowNumbe
   const sharedStringsXml = await parseXml(zip, "xl/sharedStrings.xml", true);
   const sharedStrings = readSharedStrings(sharedStringsXml);
   const sheetXml = await parseXml(zip, getFirstWorksheetPath(workbookXml, relsXml));
-  const sheetRows = readSheetRows(sheetXml, sharedStrings);
+  return readSheetRows(sheetXml, sharedStrings);
+}
+
+export async function readExcelRows(excelPath: string): Promise<Array<{ rowNumber: number; rawRow: ExcelRow }>> {
+  const sheetRows = await readExcelSheetRows(excelPath);
   const headerRow = sheetRows.find((row) => row.values.some(Boolean));
 
   if (!headerRow) {

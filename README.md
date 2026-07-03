@@ -70,6 +70,36 @@ npm run validate:liquidaciones -- --excel "C:\ruta\Consulta_histórico_para IT.x
 
 El flujo busca por `Nro. Liquidacion gente`, valida que aparezcan los recursos del Excel y, salvo que uses `--skipDetail`, entra al detalle de cada fila para comparar conceptos e importes. Si el menu o la pantalla tardan, el bot espera hasta 120 segundos por defecto y muestra progreso cada 10 segundos. Si el detalle tiene una grilla distinta a la esperada, guarda captura y HTML en `reports/diagnostics`.
 
+### Facturacion
+
+Para validar `Facturacion` > `Facturas / NC / ND` con el Excel de cuenta corriente:
+
+```powershell
+npm run validate:facturacion -- --excel "C:\Users\leo_d\Downloads\cuenta corriente Mercado Uruguay 07-05-2026 (1).xlsx" --user acortazzo --pass "<password>"
+```
+
+Opciones utiles:
+
+```powershell
+npm run validate:facturacion -- --excel "C:\ruta\cuenta corriente.xlsx" --limit 10
+npm run validate:facturacion -- --excel "C:\ruta\cuenta corriente.xlsx" --documentTypes FC
+npm run validate:facturacion -- --excel "C:\ruta\cuenta corriente.xlsx" --documentTypes FC,NC,ND
+npm run validate:facturacion -- --excel "C:\ruta\cuenta corriente.xlsx" --tipo A
+npm run validate:facturacion -- --excel "C:\ruta\cuenta corriente.xlsx" --facturacionFechaDesde 01/01/2000
+```
+
+El lector toma la tabla de cuenta corriente, usa `Mov descripcion` y `Numero`, y busca cada comprobante por `Tipo de Documento`, `T.` y `Numero`. Por defecto incluye facturas, e-tickets, notas de credito y notas de debito (`FC,ET,NC,CE,ND,DE`). Para validar solo facturas comunes, usar `--documentTypes FC`.
+
+Si el link de menu cambia o carga lento, se pueden ajustar estas esperas:
+
+```env
+SUGUS_FACTURACION_MENU_PAUSE_MS=5000
+SUGUS_FACTURACION_MENU_TIMEOUT_MS=120000
+SUGUS_FACTURACION_AFTER_CLICK_PAUSE_MS=5000
+SUGUS_FACTURACION_PAGE_TIMEOUT_MS=120000
+SUGUS_FACTURACION_FECHA_DESDE=01/01/2000
+```
+
 ## Reportes
 
 Cada corrida genera:
@@ -78,6 +108,8 @@ Cada corrida genera:
 - `reports/sugus-report-YYYYMMDD-HHMMSS.json`
 - `reports/sugus-liquidaciones-report-YYYYMMDD-HHMMSS.csv`
 - `reports/sugus-liquidaciones-report-YYYYMMDD-HHMMSS.json`
+- `reports/sugus-facturacion-report-YYYYMMDD-HHMMSS.csv`
+- `reports/sugus-facturacion-report-YYYYMMDD-HHMMSS.json`
 
 Estados principales:
 
