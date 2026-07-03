@@ -92,8 +92,8 @@ export function loadConfig(argv = process.argv.slice(2)): AppConfig {
     browser: parseBrowser(asString(args.browser, process.env.SUGUS_BROWSER || "chrome")),
     headless: asBoolean(args.headless, asBoolean(process.env.SUGUS_HEADLESS, false)),
     outputDir: asString(args.out, process.env.OUTPUT_DIR || path.resolve(process.cwd(), "reports")),
-    waitMs: asNumber(args.waitMs, asNumber(process.env.SUGUS_WAIT_MS, 900)),
-    timeoutMs: asNumber(args.timeoutMs, asNumber(process.env.SUGUS_TIMEOUT_MS, 30000)),
+    waitMs: asNumber(args.waitMs, asNumber(process.env.SUGUS_WAIT_MS, 2000)),
+    timeoutMs: asNumber(args.timeoutMs, asNumber(process.env.SUGUS_TIMEOUT_MS, 60000)),
     candidatesMenuPauseMs: asNumber(
       args.candidatesMenuPauseMs,
       asNumber(process.env.SUGUS_CANDIDATES_MENU_PAUSE_MS, 2000)

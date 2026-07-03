@@ -414,7 +414,7 @@ export class FacturacionBot {
     expected: FacturacionExpectedDocument,
     previousGridSignature: string
   ): Promise<void> {
-    const endAt = Date.now() + Math.max(this.config.waitMs * 6, 5000);
+    const endAt = Date.now() + Math.max(this.config.waitMs * 10, 20000);
     let lastGridSignature = previousGridSignature;
     let emptySince = 0;
 
@@ -428,7 +428,7 @@ export class FacturacionBot {
       const currentSignature = await this.gridSignature();
       if (rows.length === 0) {
         emptySince = emptySince || Date.now();
-        if (Date.now() - emptySince >= Math.max(this.config.waitMs, 1000)) {
+        if (Date.now() - emptySince >= Math.max(this.config.waitMs * 2, 3000)) {
           return;
         }
         await sleep(500);
