@@ -189,22 +189,22 @@ export class FacturacionBot {
 
   private async searchDocument(expected: FacturacionExpectedDocument): Promise<FacturacionGridRow[]> {
     await this.ensureFacturacionPage();
+    const previousGridSignature = await this.gridSignature();
     await this.prepareStableFilters();
-    await this.setSelectById("vE_FACTIPDOC", expected.documentType);
-    await this.setInputById("vE_FACTIP", expected.typeLetter || this.config.facturacionTipo);
+    await this.setSelectById("vE_FACTIPDOC", expected.documentType, false);
+    await this.setInputById("vE_FACTIP", expected.typeLetter || this.config.facturacionTipo, false);
     await this.setInputById("vE_FACNRO", expected.number);
     await this.submitSearch("vE_FACNRO");
-    await this.waitForGridFiltered(expected);
+    await this.waitForGridFiltered(expected, previousGridSignature);
     return this.readGridRows();
   }
 
   private async ensureFacturacionPage(): Promise<void> {
-    const elements = await this.requireDriver().findElements(By.id("vE_FACNRO"));
-    if (elements.length > 0) {
-      await this.waitForElementPresent(By.id("vE_FACTIPDOC"), this.config.timeoutMs);
+    if (await this.isFacturacionListPage()) {
       return;
     }
 
+    this.log("La pagina actual no es la lista de Facturas / NC / ND; vuelvo a abrirla.");
     if (this.config.facturacionUrl) {
       await this.requireDriver().get(this.config.facturacionUrl);
       await this.waitFacturacionPageLoaded(0);
@@ -215,11 +215,11 @@ export class FacturacionBot {
   }
 
   private async prepareStableFilters(): Promise<void> {
-    await this.setInputIfPresent("vE_CFAFECDES", this.config.facturacionFechaDesde);
-    await this.setInputIfPresent("vE_CFAFECHAS", "");
-    await this.setInputIfPresent("vE_EMPCODPOS", "0");
-    await this.setSelectIfPresent("vE_ESTADOCMP", " ");
-    await this.setSelectIfPresent("vE_MONID", "0");
+    await this.setInputIfPresent("vE_CFAFECDES", this.config.facturacionFechaDesde, false);
+    await this.setInputIfPresent("vE_CFAFECHAS", "", false);
+    await this.setInputIfPresent("vE_EMPCODPOS", "0", false);
+    await this.setSelectIfPresent("vE_ESTADOCMP", " ", false);
+    await this.setSelectIfPresent("vE_MONID", "0", false);
   }
 
   private async waitFacturacionPageLoaded(initialPauseMs: number): Promise<void> {
@@ -229,12 +229,11 @@ export class FacturacionBot {
 
     await this.waitForReady(this.config.facturacionPageTimeoutMs);
     await this.waitForDisplayedWithProgress(
-      By.id("vE_FACNRO"),
+      By.id("vE_FACTIPDOC"),
       this.config.facturacionPageTimeoutMs,
       "Facturas / NC / ND"
     );
-    await this.waitForElementPresent(By.id("vE_FACTIPDOC"), this.config.timeoutMs);
-    await this.waitForElementPresent(By.css("#Gridelement1ContainerTbl, table"), this.config.timeoutMs);
+    await this.waitForFacturacionListPage(this.config.facturacionPageTimeoutMs);
   }
 
   private async openMenuIfNeeded(timeoutMs = this.config.timeoutMs): Promise<void> {
@@ -305,6 +304,55 @@ export class FacturacionBot {
     throw new Error(`No se encontro opcion de menu: ${text}`);
   }
 
+  private async waitForFacturacionListPage(timeoutMs: number): Promise<void> {
+    const startedAt = Date.now();
+    const endAt = startedAt + timeoutMs;
+    let nextProgressAt = startedAt + 10000;
+
+    while (Date.now() < endAt) {
+      if (await this.isFacturacionListPage()) {
+        return;
+      }
+
+      const now = Date.now();
+      if (now >= nextProgressAt) {
+        const elapsed = this.msToSeconds(now - startedAt);
+        const total = this.msToSeconds(timeoutMs);
+        this.log(`Sigo esperando la grilla de Facturas / NC / ND... ${elapsed}s/${total}s`);
+        nextProgressAt = now + 10000;
+      }
+
+      await sleep(500);
+    }
+
+    throw new Error("No se pudo confirmar la grilla de Facturas / NC / ND.");
+  }
+
+  private async isFacturacionListPage(): Promise<boolean> {
+    return (await this.requireDriver().executeScript(`
+      const clean = (value) => (value || '').replace(/\\s+/g, ' ').trim();
+      const normalize = (value) => clean(value)
+        .normalize('NFD')
+        .replace(/[\\u0300-\\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+      const title = normalize((document.querySelector('#TITLE') || document.querySelector('h1'))?.textContent || '');
+      const typeSelect = document.querySelector('#vE_FACTIPDOC');
+      const typeOptions = Array.from(typeSelect?.options || []).map((option) => option.value);
+      const table = document.querySelector('#Gridelement1ContainerTbl');
+      const headers = Array.from(table?.querySelectorAll('thead th') || []).map((header) => normalize(header.textContent));
+      return Boolean(
+        title.includes('facturas nc nd') &&
+        typeOptions.includes('FC') &&
+        typeOptions.includes('NC') &&
+        table &&
+        headers.includes('comprobante') &&
+        headers.includes('numero')
+      );
+    `)) as boolean;
+  }
+
   private async submitSearch(inputId: string): Promise<void> {
     const directButtons = await this.requireDriver().findElements(By.id("SEARCHBUTTON"));
     if (directButtons.length > 0) {
@@ -362,19 +410,48 @@ export class FacturacionBot {
     `)) as WebElement | null;
   }
 
-  private async waitForGridFiltered(expected: FacturacionExpectedDocument): Promise<void> {
-    const endAt = Date.now() + this.config.timeoutMs;
+  private async waitForGridFiltered(
+    expected: FacturacionExpectedDocument,
+    previousGridSignature: string
+  ): Promise<void> {
+    const endAt = Date.now() + Math.max(this.config.waitMs * 6, 5000);
+    let lastGridSignature = previousGridSignature;
+    let emptySince = 0;
 
     while (Date.now() < endAt) {
       const rows = await this.readGridRows();
-      if (rows.length === 0 || rows.some((row) => this.rowMatchesExpected(row, expected))) {
+      if (rows.some((row) => this.rowMatchesExpected(row, expected))) {
+        await sleep(this.config.waitMs);
         return;
       }
 
+      const currentSignature = await this.gridSignature();
+      if (rows.length === 0) {
+        emptySince = emptySince || Date.now();
+        if (Date.now() - emptySince >= Math.max(this.config.waitMs, 1000)) {
+          return;
+        }
+        await sleep(500);
+        continue;
+      }
+
+      emptySince = 0;
+      if (currentSignature && currentSignature !== previousGridSignature && currentSignature === lastGridSignature) {
+        return;
+      }
+      lastGridSignature = currentSignature;
       await sleep(500);
     }
+  }
 
-    throw new Error(`La grilla no quedo filtrada por comprobante ${expected.documentType} ${expected.number}.`);
+  private async gridSignature(): Promise<string> {
+    return (await this.requireDriver().executeScript(`
+      const clean = (value) => (value || '').replace(/\\s+/g, ' ').trim();
+      const table = document.querySelector('#Gridelement1ContainerTbl');
+      if (!table) return '';
+      const rows = Array.from(table.querySelectorAll('tbody tr')).slice(0, 25);
+      return rows.map((row) => clean(row.textContent)).join('\\n');
+    `)) as string;
   }
 
   private async readGridRows(): Promise<FacturacionGridRow[]> {
@@ -475,61 +552,70 @@ export class FacturacionBot {
     await this.setInputValue(element, value);
   }
 
-  private async setInputById(id: string, value: string): Promise<void> {
+  private async setInputById(id: string, value: string, triggerEvents = true): Promise<void> {
     const element = await this.waitForElementPresent(By.id(id), this.config.timeoutMs);
-    await this.setInputValue(element, value);
+    await this.setInputValue(element, value, triggerEvents);
   }
 
-  private async setInputIfPresent(id: string, value: string): Promise<void> {
+  private async setInputIfPresent(id: string, value: string, triggerEvents = true): Promise<void> {
     const elements = await this.requireDriver().findElements(By.id(id));
     if (elements.length === 0) {
       return;
     }
 
-    await this.setInputValue(elements[0], value);
+    await this.setInputValue(elements[0], value, triggerEvents);
   }
 
-  private async setSelectById(id: string, value: string): Promise<void> {
+  private async setSelectById(id: string, value: string, triggerEvents = true): Promise<void> {
     const element = await this.waitForElementPresent(By.id(id), this.config.timeoutMs);
-    await this.setSelectValue(element, value);
+    const changed = await this.setSelectValue(element, value, triggerEvents);
+    if (!changed) {
+      throw new Error(`No existe la opcion ${value} en el select ${id}.`);
+    }
   }
 
-  private async setSelectIfPresent(id: string, value: string): Promise<void> {
+  private async setSelectIfPresent(id: string, value: string, triggerEvents = true): Promise<void> {
     const elements = await this.requireDriver().findElements(By.id(id));
     if (elements.length === 0) {
       return;
     }
 
-    await this.setSelectValue(elements[0], value);
+    await this.setSelectValue(elements[0], value, triggerEvents);
   }
 
-  private async setSelectValue(element: WebElement, value: string): Promise<void> {
-    const changed = (await this.requireDriver().executeScript(
+  private async setSelectValue(element: WebElement, value: string, triggerEvents = true): Promise<boolean> {
+    return (await this.requireDriver().executeScript(
       `
       const select = arguments[0];
       const value = arguments[1];
+      const triggerEvents = arguments[2];
       const option = Array.from(select.options || []).find((item) => item.value === value);
       if (!option) return false;
       select.value = value;
-      select.dispatchEvent(new Event('input', { bubbles: true }));
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-      select.blur();
+      if (triggerEvents) {
+        select.dispatchEvent(new Event('input', { bubbles: true }));
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        select.blur();
+      }
       return true;
       `,
       element,
-      value
+      value,
+      triggerEvents
     )) as boolean;
-
-    if (!changed) {
-      throw new Error(`No existe la opcion ${value} en el select.`);
-    }
   }
 
-  private async setInputValue(element: WebElement, value: string): Promise<void> {
+  private async setInputValue(element: WebElement, value: string, triggerEvents = true): Promise<void> {
     const driver = this.requireDriver();
     await driver.executeScript("arguments[0].scrollIntoView({ block: 'center', inline: 'nearest' });", element);
+
+    if (!triggerEvents) {
+      await driver.executeScript("arguments[0].value = arguments[1];", element, value);
+      return;
+    }
+
     try {
-      await element.clear();
+      await driver.executeScript("arguments[0].value = '';", element);
       if (value) {
         await element.sendKeys(value);
       }
