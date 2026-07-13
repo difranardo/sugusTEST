@@ -100,6 +100,35 @@ SUGUS_FACTURACION_PAGE_TIMEOUT_MS=120000
 SUGUS_FACTURACION_FECHA_DESDE=01/01/2000
 ```
 
+### Modificación masiva de NPI (PAYROLL-2962)
+
+El bot integrado inicia sesión en RANDY Test, navega por `NPI` > `Modificación Masiva NPI` y ejecuta validaciones funcionales sobre la pantalla:
+
+```powershell
+npm run validate:npi
+```
+
+Selectores de navegación confirmados:
+
+- menú: `a[data-k2btcode="NPI"]`;
+- opción: `a[data-k2btcode="Payroll.NPI.ModificacionMasivaNPI"]`;
+- fallback directo: `/payroll.npi.modificacionmasivanpi.aspx`.
+
+Configuración mínima en `.env`:
+
+```env
+SUGUS_URL=https://randy-test-uy.randstad.com.uy/login.aspx
+SUGUS_USER=<usuario_qa>
+SUGUS_PASS=<password_qa>
+NPI_TEST_NUMBER=52
+NPI_STATE=A
+SUGUS_ALLOW_WRITE=false
+```
+
+Con `SUGUS_ALLOW_WRITE=false` no se confirman operaciones que puedan persistir cambios. Las pruebas de piso salarial y guardado de monto fijo quedan en estado `SKIPPED`. Para habilitarlas se necesita una NPI descartable de QA y las variables documentadas en `.env.example`.
+
+El resultado se guarda en `reports/payroll-2962/payroll-2962-report.json`; los fallos también generan una captura PNG en esa carpeta.
+
 ## Reportes
 
 Cada corrida genera:
