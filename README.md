@@ -125,7 +125,7 @@ NPI_STATE=A
 SUGUS_ALLOW_WRITE=false
 ```
 
-La búsqueda respeta el orden de habilitación de Randy: `Tipo de servicio` → `Unidad de negocio` → `Posición a cubrir` → `Grupo/Subgrupo` → `Categoría` → `Empresa Usuaria` → `Planta` → `Sucursal de mantenimiento` → `Operador de cuenta` → `NPI desde/hasta` → `Estado` → `Buscar`. `NPI_TEST_NUMBER` y `NPI_STATE` son obligatorios. Antes del clic, el bot vuelve a leer todos los controles obligatorios y cancela la búsqueda si alguno está vacío o deshabilitado. Los valores específicos se configuran con las variables `NPI_*_VALUE` de `.env.example`; cuando una queda vacía, el bot selecciona la primera opción habilitada del combo correspondiente.
+La búsqueda respeta el orden de habilitación de Randy: `Tipo de servicio` → `Unidad de negocio` → `Posición a cubrir` → `Grupo/Subgrupo` → `Categoría` → `Empresa Usuaria` → `Planta` → `Sucursal de mantenimiento` → `Operador de cuenta` → `NPI desde/hasta` → `Estado` → `Buscar`. `NPI_TEST_NUMBER` y `NPI_STATE` son obligatorios. Para cada combo, el bot intenta seleccionar la opción configurada o la primera habilitada; si continúa vacío durante `NPI_EMPTY_COMBO_WAIT_MS`, registra una advertencia y avanza al siguiente. Los valores específicos se configuran con las variables `NPI_*_VALUE` de `.env.example`.
 
 Con `SUGUS_ALLOW_WRITE=false` no se confirman operaciones que puedan persistir cambios. Las pruebas de piso salarial y guardado de monto fijo quedan en estado `SKIPPED`. Para habilitarlas se necesita una NPI descartable de QA y las variables documentadas en `.env.example`.
 

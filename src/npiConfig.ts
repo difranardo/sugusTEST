@@ -56,6 +56,7 @@ export interface NpiBotConfig {
   afterClickPauseMs: number;
   pageTimeoutMs: number;
   menuTimeoutMs: number;
+  emptyComboWaitMs: number;
   matchMode: "strict" | "contains";
   allowWrite: boolean;
   directNavigationFallback: boolean;
@@ -103,6 +104,7 @@ export function loadNpiConfig(): NpiBotConfig {
     afterClickPauseMs: numberEnv("SUGUS_NPI_AFTER_CLICK_PAUSE_MS", 5000),
     pageTimeoutMs: numberEnv("SUGUS_NPI_PAGE_TIMEOUT_MS", 120000),
     menuTimeoutMs: numberEnv("SUGUS_NPI_MENU_TIMEOUT_MS", 120000),
+    emptyComboWaitMs: numberEnv("NPI_EMPTY_COMBO_WAIT_MS", 5000),
     matchMode,
     allowWrite: boolEnv("SUGUS_ALLOW_WRITE", false),
     directNavigationFallback: boolEnv("SUGUS_DIRECT_NAV_FALLBACK", true),

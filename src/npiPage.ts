@@ -252,27 +252,31 @@ export class ModificacionMasivaNpiPage {
   }
 
   private async selectCategoryForSearch(text?: string): Promise<void> {
-    const container = await waitVisible(this.driver, By.id("CATEGORIA1Container"), this.config.pageTimeoutMs);
-    await clickWithJsFallback(this.driver, await container.findElement(By.css(".K2BTEnhancedComboHeader")));
-    const searchInputs = await container.findElements(By.css(".K2BTEnhancedComboSearchInput"));
-    if (text && searchInputs.length > 0 && (await searchInputs[0].isDisplayed())) {
-      await searchInputs[0].sendKeys(Key.chord(Key.CONTROL, "a"));
-      await searchInputs[0].sendKeys(text);
-    }
-    const expected = text ? normalizeText(text) : "";
-    const item = (await this.driver.wait(async () => {
-      for (const candidate of await container.findElements(By.css(".K2BTEnhancedComboItem"))) {
-        if (!(await candidate.isDisplayed())) continue;
-        const actual = normalizeText(await candidate.getText());
-        if (!actual || actual === "ninguno") continue;
-        if (!expected || (this.config.matchMode === "strict" ? actual === expected : actual.includes(expected))) {
-          return candidate;
-        }
+    try {
+      const container = await waitVisible(this.driver, By.id("CATEGORIA1Container"), this.config.emptyComboWaitMs);
+      await clickWithJsFallback(this.driver, await container.findElement(By.css(".K2BTEnhancedComboHeader")));
+      const searchInputs = await container.findElements(By.css(".K2BTEnhancedComboSearchInput"));
+      if (text && searchInputs.length > 0 && (await searchInputs[0].isDisplayed())) {
+        await searchInputs[0].sendKeys(Key.chord(Key.CONTROL, "a"));
+        await searchInputs[0].sendKeys(text);
       }
-      return false;
-    }, this.config.pageTimeoutMs, "Categoría no se habilitó o no cargó opciones")) as WebElement;
-    await clickWithJsFallback(this.driver, item);
-    await sleep(this.config.waitMs);
+      const expected = text ? normalizeText(text) : "";
+      const item = (await this.driver.wait(async () => {
+        for (const candidate of await container.findElements(By.css(".K2BTEnhancedComboItem"))) {
+          if (!(await candidate.isDisplayed())) continue;
+          const actual = normalizeText(await candidate.getText());
+          if (!actual || actual === "ninguno") continue;
+          if (!expected || (this.config.matchMode === "strict" ? actual === expected : actual.includes(expected))) {
+            return candidate;
+          }
+        }
+        return false;
+      }, this.config.emptyComboWaitMs, "Categoría no se habilitó o no cargó opciones")) as WebElement;
+      await clickWithJsFallback(this.driver, item);
+      await sleep(this.config.waitMs);
+    } catch {
+      this.warnEmptyCombo("Categoría");
+    }
   }
 
   async getBaseMonthlySalary(): Promise<number> {
@@ -334,7 +338,13 @@ export class ModificacionMasivaNpiPage {
   }
 
   private async selectRequiredFilter(locator: By, label: string, configuredValue?: string): Promise<string> {
-    const control = await this.waitForSelectWithOptions(locator, label);
+    let control: WebElement;
+    try {
+      control = await this.waitForSelectWithOptions(locator, label, false, this.config.emptyComboWaitMs);
+    } catch {
+      this.warnEmptyCombo(label);
+      return "";
+    }
     const currentValue = (await control.getAttribute("value"))?.trim() ?? "";
     let target = configuredValue?.trim() || currentValue;
 
@@ -370,7 +380,12 @@ export class ModificacionMasivaNpiPage {
     await sleep(this.config.waitMs);
   }
 
-  private async waitForSelectWithOptions(locator: By, label: string, allowOnlyEmpty = false) {
+  private async waitForSelectWithOptions(
+    locator: By,
+    label: string,
+    allowOnlyEmpty = false,
+    timeoutMs = this.config.pageTimeoutMs
+  ) {
     await this.driver.wait(async () => {
       try {
         const control = await this.driver.findElement(locator);
@@ -384,7 +399,7 @@ export class ModificacionMasivaNpiPage {
       } catch {
         return false;
       }
-    }, this.config.pageTimeoutMs, `${label} no se habilitó o no cargó opciones`);
+    }, timeoutMs, `${label} no se habilitó o no cargó opciones`);
     return waitEnabled(this.driver, locator, this.config.timeoutMs);
   }
 
@@ -444,9 +459,10 @@ export class ModificacionMasivaNpiPage {
       if (!((await element.getAttribute("value")) ?? "").trim()) missing.push(field.label);
     }
     if (missing.length > 0) {
-      throw new Error(`No se ejecuta Buscar: faltan completar ${missing.join(", ")}`);
+      console.warn(`[NPI] Se continúa con combos vacíos o deshabilitados: ${missing.join(", ")}`);
+    } else {
+      console.log("[NPI] Todos los campos disponibles están completos; se permite Buscar");
     }
-    console.log("[NPI] Todos los campos obligatorios están completos; se permite Buscar");
   }
 
   private async selectRequiredByLabel(candidateIds: string[], label: string, configuredValue?: string): Promise<string> {
@@ -464,19 +480,25 @@ export class ModificacionMasivaNpiPage {
       })||null;
     `, candidateIds, label);
 
-    const control = (await this.driver.wait(async () => {
-      const candidate = await findControl();
-      if (!candidate) return false;
-      try {
-        if (!(await candidate.isEnabled())) return false;
-        for (const option of await candidate.findElements(By.css("option"))) {
-          if (((await option.getAttribute("value")) ?? "").trim() && (await option.isEnabled())) return candidate;
+    let control: WebElement;
+    try {
+      control = (await this.driver.wait(async () => {
+        const candidate = await findControl();
+        if (!candidate) return false;
+        try {
+          if (!(await candidate.isEnabled())) return false;
+          for (const option of await candidate.findElements(By.css("option"))) {
+            if (((await option.getAttribute("value")) ?? "").trim() && (await option.isEnabled())) return candidate;
+          }
+        } catch {
+          return false;
         }
-      } catch {
         return false;
-      }
-      return false;
-    }, this.config.pageTimeoutMs, `${label} no se encontró, no se habilitó o no cargó opciones`)) as WebElement;
+      }, this.config.emptyComboWaitMs, `${label} no se encontró, no se habilitó o no cargó opciones`)) as WebElement;
+    } catch {
+      this.warnEmptyCombo(label);
+      return "";
+    }
 
     const current = ((await control.getAttribute("value")) ?? "").trim();
     let target = configuredValue?.trim() || current;
@@ -508,5 +530,9 @@ export class ModificacionMasivaNpiPage {
         // El AJAX puede reemplazar el control inmediatamente después del cambio.
       }
     }
+  }
+
+  private warnEmptyCombo(label: string): void {
+    console.warn(`[NPI] ${label} sigue vacío/deshabilitado después de ${this.config.emptyComboWaitMs} ms; continúo.`);
   }
 }
