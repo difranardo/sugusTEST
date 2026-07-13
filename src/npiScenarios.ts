@@ -101,7 +101,7 @@ export class Payroll2962Scenarios {
     return results;
   }
 
-  private searchOptions(): { state: "" | "A" | "I"; npiFrom?: string; npiTo?: string } {
+  private searchOptions(): { state: "A" | "I"; npiFrom: string; npiTo: string } {
     return { state: this.config.state, npiFrom: this.config.npiNumber, npiTo: this.config.npiNumber };
   }
 

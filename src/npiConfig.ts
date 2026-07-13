@@ -61,8 +61,15 @@ export interface NpiBotConfig {
   directNavigationFallback: boolean;
   screenshotOnPass: boolean;
   outputDir: string;
-  npiNumber?: string;
-  state: "" | "A" | "I";
+  npiNumber: string;
+  serviceTypeValue?: string;
+  businessUnitValue?: string;
+  positionValue?: string;
+  userCompanyValue?: string;
+  plantValue?: string;
+  maintenanceBranchValue?: string;
+  accountOperatorValue?: string;
+  state: "A" | "I";
   conditionPayment: string;
   observation: string;
   forbiddenActiveIds: string[];
@@ -79,8 +86,8 @@ export function loadNpiConfig(): NpiBotConfig {
   }
 
   const state = (process.env.NPI_STATE ?? "A").trim().toUpperCase();
-  if (state !== "" && state !== "A" && state !== "I") {
-    throw new Error("NPI_STATE debe ser vacío, A o I");
+  if (state !== "A" && state !== "I") {
+    throw new Error("NPI_STATE debe ser A o I para completar la búsqueda");
   }
 
   return {
@@ -101,8 +108,15 @@ export function loadNpiConfig(): NpiBotConfig {
     directNavigationFallback: boolEnv("SUGUS_DIRECT_NAV_FALLBACK", true),
     screenshotOnPass: boolEnv("SUGUS_SCREENSHOT_ON_PASS", false),
     outputDir: process.env.NPI_OUTPUT_DIR?.trim() || path.resolve(process.cwd(), "reports", "payroll-2962"),
-    npiNumber: process.env.NPI_TEST_NUMBER?.trim() || undefined,
-    state: state as "" | "A" | "I",
+    npiNumber: required("NPI_TEST_NUMBER"),
+    serviceTypeValue: process.env.NPI_SERVICE_TYPE_VALUE?.trim() || undefined,
+    businessUnitValue: process.env.NPI_BUSINESS_UNIT_VALUE?.trim() || undefined,
+    positionValue: process.env.NPI_POSITION_VALUE?.trim() || undefined,
+    userCompanyValue: process.env.NPI_USER_COMPANY_VALUE?.trim() || undefined,
+    plantValue: process.env.NPI_PLANT_VALUE?.trim() || undefined,
+    maintenanceBranchValue: process.env.NPI_MAINTENANCE_BRANCH_VALUE?.trim() || undefined,
+    accountOperatorValue: process.env.NPI_ACCOUNT_OPERATOR_VALUE?.trim() || undefined,
+    state: state as "A" | "I",
     conditionPayment: (process.env.NPI_CONDITION_PAYMENT ?? "30").trim(),
     observation: (process.env.NPI_TEST_OBSERVATION ?? "QA PAYROLL-2962").trim(),
     forbiddenActiveIds: listEnv("NPI_FORBIDDEN_ACTIVE_IDS"),
